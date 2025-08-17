@@ -137,6 +137,9 @@ class _HomeScreenState extends State<HomeScreen>
           // Header with Pet Carousel
           _buildHeader(),
           
+          // Quick Navigation Bar - Easy access to main features
+          _buildQuickNavigationBar(),
+          
           // Tab Bar
           _buildTabBar(),
           
@@ -156,14 +159,19 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addNewPet,
+      bottomNavigationBar: _buildBottomNavigationBar(),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showQuickAccessMenu,
         backgroundColor: AppTheme.colors.primary,
-        child: Icon(
-          Icons.add,
-          color: AppTheme.colors.onPrimary,
+        foregroundColor: AppTheme.colors.onPrimary,
+        icon: Icon(Icons.navigation),
+        label: Text('Quick Access'),
+        elevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
         ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 
@@ -187,6 +195,11 @@ class _HomeScreenState extends State<HomeScreen>
       ),
       child: Column(
         children: [
+          // Top Quick Access Toolbar
+          _buildTopQuickAccessToolbar(),
+          
+          const SizedBox(height: 20),
+          
           // User Welcome
           Row(
             children: [
@@ -222,17 +235,6 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                   ],
-                ),
-              ),
-              
-              // Settings button
-              IconButton(
-                onPressed: () {
-                  // Navigate to settings
-                },
-                icon: Icon(
-                  Icons.settings,
-                  color: AppTheme.colors.textSecondary,
                 ),
               ),
             ],
@@ -370,6 +372,663 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  /// Top Quick Access Toolbar - Instant access to key features
+  Widget _buildTopQuickAccessToolbar() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // Profile Quick Access
+        InkWell(
+          onTap: () => _showProfileOptions(),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.colors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppTheme.colors.primary.withOpacity(0.2),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.person,
+                  color: AppTheme.colors.primary,
+                  size: 16,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Profile',
+                  style: AppTheme.textStyles.bodySmall?.copyWith(
+                    color: AppTheme.colors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        // Center - App Logo/Title
+        Text(
+          'Serenyx',
+          style: AppTheme.textStyles.titleMedium?.copyWith(
+            color: AppTheme.colors.primary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        
+        // Right side - Settings & Notifications
+        Row(
+          children: [
+            // Notifications
+            InkWell(
+              onTap: () => Navigator.pushNamed(context, '/notifications'),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.colors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppTheme.colors.primary.withOpacity(0.2),
+                  ),
+                ),
+                child: Icon(
+                  Icons.notifications,
+                  color: AppTheme.colors.primary,
+                  size: 18,
+                ),
+              ),
+            ),
+            
+            const SizedBox(width: 8),
+            
+            // Settings
+            InkWell(
+              onTap: () => _showSettingsOptions(),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.colors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppTheme.colors.primary.withOpacity(0.2),
+                  ),
+                ),
+                child: Icon(
+                  Icons.settings,
+                  color: AppTheme.colors.primary,
+                  size: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Quick Navigation Bar - Easy access to main features
+  Widget _buildQuickNavigationBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.colors.primary.withOpacity(0.1),
+            AppTheme.colors.primary.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppTheme.colors.primary.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.colors.primary.withOpacity(0.1),
+            blurRadius: 15,
+            spreadRadius: 0,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section Title
+          Row(
+            children: [
+              Icon(
+                Icons.navigation,
+                color: AppTheme.colors.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Quick Access',
+                style: AppTheme.textStyles.titleMedium?.copyWith(
+                  color: AppTheme.colors.textPrimary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Navigation Grid
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 3,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.2,
+            children: [
+              _buildQuickNavItem(
+                icon: Icons.home,
+                label: 'Home',
+                color: AppTheme.colors.primary,
+                onTap: () {
+                  // Already on home, maybe scroll to top
+                  _scrollToTop();
+                },
+              ),
+              _buildQuickNavItem(
+                icon: Icons.pets,
+                label: 'CRM',
+                color: Colors.green,
+                onTap: () {
+                  Navigator.pushNamed(context, '/pet-management');
+                },
+              ),
+              _buildQuickNavItem(
+                icon: Icons.self_improvement,
+                label: 'Mindfulness',
+                color: Colors.purple,
+                onTap: () {
+                  Navigator.pushNamed(context, '/health-wellness');
+                },
+              ),
+              _buildQuickNavItem(
+                icon: Icons.person,
+                label: 'Profile',
+                color: Colors.blue,
+                onTap: () {
+                  _showProfileOptions();
+                },
+              ),
+              _buildQuickNavItem(
+                icon: Icons.settings,
+                label: 'Settings',
+                color: Colors.orange,
+                onTap: () {
+                  _showSettingsOptions();
+                },
+              ),
+              _buildQuickNavItem(
+                icon: Icons.add_circle_outline,
+                label: 'Add Pet',
+                color: Colors.teal,
+                onTap: _addNewPet,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Individual Quick Navigation Item
+  Widget _buildQuickNavItem({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: color.withOpacity(0.2),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.1),
+                blurRadius: 8,
+                spreadRadius: 0,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: AppTheme.textStyles.bodySmall?.copyWith(
+                  color: AppTheme.colors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Scroll to top of the screen
+  void _scrollToTop() {
+    // This will be implemented when we add scrolling capability
+    // For now, just show a snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('You\'re already on the home screen!'),
+        backgroundColor: AppTheme.colors.primary,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  /// Show profile options
+  void _showProfileOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: AppTheme.colors.surface,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: AppTheme.colors.outline,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.person, color: AppTheme.colors.primary),
+              title: Text('View Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigate to profile screen
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.edit, color: AppTheme.colors.primary),
+              title: Text('Edit Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigate to edit profile screen
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.pets, color: AppTheme.colors.primary),
+              title: Text('My Pets'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/pet-management');
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Show settings options
+  void _showSettingsOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: AppTheme.colors.surface,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: AppTheme.colors.outline,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.settings, color: AppTheme.colors.primary),
+              title: Text('App Settings'),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigate to app settings
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.notifications, color: AppTheme.colors.primary),
+              title: Text('Notification Preferences'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/notifications');
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.security, color: AppTheme.colors.primary),
+              title: Text('Privacy & Security'),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigate to privacy settings
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.help, color: AppTheme.colors.primary),
+              title: Text('Help & Support'),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigate to help screen
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Show quick access menu
+  void _showQuickAccessMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: AppTheme.colors.surface,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: AppTheme.colors.outline,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            
+            // Title
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.navigation,
+                    color: AppTheme.colors.primary,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Quick Access Menu',
+                    style: AppTheme.textStyles.titleLarge?.copyWith(
+                      color: AppTheme.colors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Quick access grid
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 3,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.1,
+                children: [
+                  _buildQuickAccessItem(
+                    icon: Icons.home,
+                    label: 'Home',
+                    color: AppTheme.colors.primary,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _scrollToTop();
+                    },
+                  ),
+                  _buildQuickAccessItem(
+                    icon: Icons.pets,
+                    label: 'Pet CRM',
+                    color: Colors.green,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/pet-management');
+                    },
+                  ),
+                  _buildQuickAccessItem(
+                    icon: Icons.self_improvement,
+                    label: 'Mindfulness',
+                    color: Colors.purple,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/health-wellness');
+                    },
+                  ),
+                  _buildQuickAccessItem(
+                    icon: Icons.psychology,
+                    label: 'AI Insights',
+                    color: Colors.indigo,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/ai-insights');
+                    },
+                  ),
+                  _buildQuickAccessItem(
+                    icon: Icons.analytics,
+                    label: 'Analytics',
+                    color: Colors.blue,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/analytics');
+                    },
+                  ),
+                  _buildQuickAccessItem(
+                    icon: Icons.people,
+                    label: 'Community',
+                    color: Colors.orange,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/community');
+                    },
+                  ),
+                  _buildQuickAccessItem(
+                    icon: Icons.photo_library,
+                    label: 'Scrapbook',
+                    color: Colors.pink,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/scrapbook');
+                    },
+                  ),
+                  _buildQuickAccessItem(
+                    icon: Icons.notifications,
+                    label: 'Notifications',
+                    color: Colors.red,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/notifications');
+                    },
+                  ),
+                  _buildQuickAccessItem(
+                    icon: Icons.person,
+                    label: 'Profile',
+                    color: Colors.teal,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showProfileOptions();
+                    },
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Add Pet Button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _addNewPet();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.colors.primary,
+                    foregroundColor: AppTheme.colors.onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  icon: Icon(Icons.add),
+                  label: Text(
+                    'Add New Pet',
+                    style: AppTheme.textStyles.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Individual Quick Access Item for the menu
+  Widget _buildQuickAccessItem({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: color.withOpacity(0.2),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.1),
+                blurRadius: 8,
+                spreadRadius: 0,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: AppTheme.textStyles.bodySmall?.copyWith(
+                  color: AppTheme.colors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTabBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -394,6 +1053,45 @@ class _HomeScreenState extends State<HomeScreen>
           Tab(icon: Icon(Icons.photo_library), text: 'Scrapbook'),
         ],
       ),
+    );
+  }
+
+  Widget _buildBottomNavigationBar() {
+    return BottomNavigationBar(
+      currentIndex: _tabController.index,
+      onTap: (index) {
+        _tabController.animateTo(index);
+      },
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: AppTheme.colors.primary,
+      unselectedItemColor: AppTheme.colors.textSecondary,
+      showUnselectedLabels: true,
+      items: const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.dashboard),
+          label: 'Dashboard',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.health_and_safety),
+          label: 'Health',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.psychology),
+          label: 'AI',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.notifications),
+          label: 'Reminders',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.people),
+          label: 'Community',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.photo_library),
+          label: 'Scrapbook',
+        ),
+      ],
     );
   }
 
