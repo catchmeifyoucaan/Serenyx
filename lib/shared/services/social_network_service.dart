@@ -9,1011 +9,710 @@ class SocialNetworkService {
   factory SocialNetworkService() => _instance;
   SocialNetworkService._internal();
 
-  // Mock data for demonstration
-  final List<SocialPost> _posts = [];
-  final List<CommunityGroup> _groups = [];
-  final List<CommunityEvent> _events = [];
-  final List<ExpertProfile> _experts = [];
+  // Real API endpoints - replace with your actual backend URLs
+  static const String _baseUrl = 'https://api.serenyx.com';
+  static const String _apiKey = 'YOUR_SERENYX_API_KEY'; // Replace with real key
 
-  /// Initialize mock data
-  void initializeMockData() {
-    _initializePosts();
-    _initializeGroups();
-    _initializeEvents();
-    _initializeExperts();
-  }
-
-  /// Create a new social post
   Future<SocialPost> createPost({
     required String userId,
-    required String userName,
-    String? userPhotoUrl,
-    required PostType type,
-    required String title,
     required String content,
-    List<String> images = const [],
+    required PostType type,
     List<String> hashtags = const [],
-    String language = 'en',
+    List<String> mediaUrls = const [],
+    String? location,
+    Map<String, dynamic>? metadata,
   }) async {
-    // Simulate API delay
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/social/posts'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'userId': userId,
+          'content': content,
+          'type': type.name,
+          'hashtags': hashtags,
+          'mediaUrls': mediaUrls,
+          'location': location,
+          'metadata': metadata ?? {},
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
 
-    final post = SocialPost(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      userId: userId,
-      userName: userName,
-      userPhotoUrl: userPhotoUrl,
-      type: type,
-      title: title,
-      content: content,
-      images: images,
-      hashtags: hashtags,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      likedBy: [],
-      createdAt: DateTime.now(),
-      metadata: {
-        'language': language,
-        'createdAt': DateTime.now().toIso8601String(),
-      },
-    );
-
-    _posts.add(post);
-    return post;
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return SocialPost.fromJson(data);
+      } else {
+        throw Exception('Failed to create post: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to create post: $e');
+    }
   }
 
-  /// Get social feed posts
   Future<List<SocialPost>> getSocialFeed({
     String? userId,
-    PostType? type,
-    String? hashtag,
-    int page = 0,
+    String? category,
+    int page = 1,
     int limit = 20,
-    String language = 'en',
   }) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      
+      if (userId != null) queryParams['userId'] = userId;
+      if (category != null) queryParams['category'] = category;
 
-    List<SocialPost> filteredPosts = List.from(_posts);
+      final uri = Uri.parse('$_baseUrl/api/social/feed').replace(queryParameters: queryParams);
+      
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+        },
+      );
 
-    // Filter by type
-    if (type != null) {
-      filteredPosts = filteredPosts.where((post) => post.type == type).toList();
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final posts = data['posts'] as List;
+        return posts.map((post) => SocialPost.fromJson(post)).toList();
+      } else {
+        throw Exception('Failed to fetch social feed: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch social feed: $e');
     }
-
-    // Filter by hashtag
-    if (hashtag != null) {
-      filteredPosts = filteredPosts.where((post) => 
-        post.hashtags.any((tag) => tag.toLowerCase().contains(hashtag.toLowerCase()))
-      ).toList();
-    }
-
-    // Sort by creation date (newest first)
-    filteredPosts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-    // Pagination
-    final startIndex = page * limit;
-    final endIndex = startIndex + limit;
-    
-    if (startIndex >= filteredPosts.length) {
-      return [];
-    }
-
-    return filteredPosts.sublist(
-      startIndex, 
-      endIndex > filteredPosts.length ? filteredPosts.length : endIndex
-    );
   }
 
-  /// Like/unlike a post
   Future<bool> toggleLike({
     required String postId,
     required String userId,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 200));
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/social/posts/$postId/like'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'userId': userId,
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
 
-    final postIndex = _posts.indexWhere((post) => post.id == postId);
-    if (postIndex == -1) return false;
-
-    final post = _posts[postIndex];
-    final isLiked = post.likedBy.contains(userId);
-
-    if (isLiked) {
-      post.likedBy.remove(userId);
-      post.likes = (post.likes - 1).clamp(0, double.infinity).toInt();
-    } else {
-      post.likedBy.add(userId);
-      post.likes++;
+      return response.statusCode == 200;
+    } catch (e) {
+      throw Exception('Failed to toggle like: $e');
     }
-
-    _posts[postIndex] = post;
-    return !isLiked;
   }
 
-  /// Add comment to a post
   Future<bool> addComment({
     required String postId,
     required String userId,
-    required String userName,
-    required String comment,
+    required String content,
+    String? parentCommentId,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/social/posts/$postId/comments'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'userId': userId,
+          'content': content,
+          'parentCommentId': parentCommentId,
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
 
-    final postIndex = _posts.indexWhere((post) => post.id == postId);
-    if (postIndex == -1) return false;
-
-    final post = _posts[postIndex];
-    post.comments++;
-    _posts[postIndex] = post;
-
-    return true;
+      return response.statusCode == 201;
+    } catch (e) {
+      throw Exception('Failed to add comment: $e');
+    }
   }
 
-  /// Share a post
   Future<bool> sharePost({
     required String postId,
     required String userId,
     required SocialPlatform platform,
+    String? customMessage,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 400));
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/social/posts/$postId/share'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'userId': userId,
+          'platform': platform.name,
+          'customMessage': customMessage,
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
 
-    final postIndex = _posts.indexWhere((post) => post.id == postId);
-    if (postIndex == -1) return false;
-
-    final post = _posts[postIndex];
-    post.shares++;
-    _posts[postIndex] = post;
-
-    return true;
+      return response.statusCode == 200;
+    } catch (e) {
+      throw Exception('Failed to share post: $e');
+    }
   }
 
-  /// Create a community group
   Future<CommunityGroup> createGroup({
     required String name,
     required String description,
-    required String category,
     required String creatorId,
-    required String creatorName,
     List<String> tags = const [],
-    String imageUrl = '',
-    bool isPrivate = false,
-    String language = 'en',
+    String? location,
+    GroupPrivacy privacy = GroupPrivacy.public,
+    List<String> rules = const [],
   }) async {
-    await Future.delayed(const Duration(milliseconds: 600));
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/social/groups'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'name': name,
+          'description': description,
+          'creatorId': creatorId,
+          'tags': tags,
+          'location': location,
+          'privacy': privacy.name,
+          'rules': rules,
+          'createdAt': DateTime.now().toIso8601String(),
+        }),
+      );
 
-    final group = CommunityGroup(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: name,
-      description: description,
-      category: category,
-      creatorId: creatorId,
-      creatorName: creatorName,
-      tags: tags,
-      imageUrl: imageUrl,
-      isPrivate: isPrivate,
-      memberCount: 1,
-      members: [creatorId],
-      posts: [],
-      createdAt: DateTime.now(),
-      language: language,
-    );
-
-    _groups.add(group);
-    return group;
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return CommunityGroup.fromJson(data);
+      } else {
+        throw Exception('Failed to create group: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to create group: $e');
+    }
   }
 
-  /// Get community groups
   Future<List<CommunityGroup>> getGroups({
     String? category,
-    String? searchQuery,
-    bool? isPrivate,
-    int page = 0,
+    String? location,
+    int page = 1,
     int limit = 20,
-    String language = 'en',
   }) async {
-    await Future.delayed(const Duration(milliseconds: 400));
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      
+      if (category != null) queryParams['category'] = category;
+      if (location != null) queryParams['location'] = location;
 
-    List<CommunityGroup> filteredGroups = List.from(_groups);
+      final uri = Uri.parse('$_baseUrl/api/social/groups').replace(queryParameters: queryParams);
+      
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+        },
+      );
 
-    // Filter by category
-    if (category != null) {
-      filteredGroups = filteredGroups.where((group) => group.category == category).toList();
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final groups = data['groups'] as List;
+        return groups.map((group) => CommunityGroup.fromJson(group)).toList();
+      } else {
+        throw Exception('Failed to fetch groups: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch groups: $e');
     }
-
-    // Filter by search query
-    if (searchQuery != null && searchQuery.isNotEmpty) {
-      filteredGroups = filteredGroups.where((group) => 
-        group.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
-        group.description.toLowerCase().contains(searchQuery.toLowerCase()) ||
-        group.tags.any((tag) => tag.toLowerCase().contains(searchQuery.toLowerCase()))
-      ).toList();
-    }
-
-    // Filter by privacy
-    if (isPrivate != null) {
-      filteredGroups = filteredGroups.where((group) => group.isPrivate == isPrivate).toList();
-    }
-
-    // Sort by member count (most popular first)
-    filteredGroups.sort((a, b) => b.memberCount.compareTo(a.memberCount));
-
-    // Pagination
-    final startIndex = page * limit;
-    final endIndex = startIndex + limit;
-    
-    if (startIndex >= filteredGroups.length) {
-      return [];
-    }
-
-    return filteredGroups.sublist(
-      startIndex, 
-      endIndex > filteredGroups.length ? filteredGroups.length : endIndex
-    );
   }
 
-  /// Join a community group
   Future<bool> joinGroup({
     required String groupId,
     required String userId,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/social/groups/$groupId/join'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'userId': userId,
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
 
-    final groupIndex = _groups.indexWhere((group) => group.id == groupId);
-    if (groupIndex == -1) return false;
-
-    final group = _groups[groupIndex];
-    if (group.members.contains(userId)) return false;
-
-    group.members.add(userId);
-    group.memberCount++;
-    _groups[groupIndex] = group;
-
-    return true;
+      return response.statusCode == 200;
+    } catch (e) {
+      throw Exception('Failed to join group: $e');
+    }
   }
 
-  /// Leave a community group
   Future<bool> leaveGroup({
     required String groupId,
     required String userId,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    try {
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/api/social/groups/$groupId/members/$userId'),
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+        },
+      );
 
-    final groupIndex = _groups.indexWhere((group) => group.id == groupId);
-    if (groupIndex == -1) return false;
-
-    final group = _groups[groupIndex];
-    if (!group.members.contains(userId)) return false;
-
-    group.members.remove(userId);
-    group.memberCount = (group.memberCount - 1).clamp(0, double.infinity);
-    _groups[groupIndex] = group;
-
-    return true;
+      return response.statusCode == 200;
+    } catch (e) {
+      throw Exception('Failed to leave group: $e');
+    }
   }
 
-  /// Create a community event
   Future<CommunityEvent> createEvent({
-    required String title,
+    required String name,
     required String description,
-    required String eventType,
+    required String organizerId,
     required DateTime startDate,
     required DateTime endDate,
-    required String location,
-    bool isOnline = false,
-    int maxParticipants = 50,
-    required String organizerId,
-    required String organizerName,
+    String? location,
     List<String> tags = const [],
-    String imageUrl = '',
-    String language = 'en',
+    int maxParticipants,
+    String? groupId,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 700));
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/social/events'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'name': name,
+          'description': description,
+          'organizerId': organizerId,
+          'startDate': startDate.toIso8601String(),
+          'endDate': endDate.toIso8601String(),
+          'location': location,
+          'tags': tags,
+          'maxParticipants': maxParticipants,
+          'groupId': groupId,
+          'createdAt': DateTime.now().toIso8601String(),
+        }),
+      );
 
-    final event = CommunityEvent(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: title,
-      description: description,
-      eventType: eventType,
-      startDate: startDate,
-      endDate: endDate,
-      location: location,
-      isOnline: isOnline,
-      maxParticipants: maxParticipants,
-      participants: [organizerId],
-      tags: tags,
-      imageUrl: imageUrl,
-      organizerId: organizerId,
-      organizerName: organizerName,
-      eventColor: _getRandomEventColor(),
-    );
-
-    _events.add(event);
-    return event;
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return CommunityEvent.fromJson(data);
+      } else {
+        throw Exception('Failed to create event: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to create event: $e');
+    }
   }
 
-  /// Get community events
   Future<List<CommunityEvent>> getEvents({
-    String? eventType,
+    String? category,
+    String? location,
     DateTime? startDate,
     DateTime? endDate,
-    String? location,
-    bool? isOnline,
-    int page = 0,
+    int page = 1,
     int limit = 20,
-    String language = 'en',
   }) async {
-    await Future.delayed(const Duration(milliseconds: 400));
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      
+      if (category != null) queryParams['category'] = category;
+      if (location != null) queryParams['location'] = location;
+      if (startDate != null) queryParams['startDate'] = startDate.toIso8601String();
+      if (endDate != null) queryParams['endDate'] = endDate.toIso8601String();
 
-    List<CommunityEvent> filteredEvents = List.from(_events);
+      final uri = Uri.parse('$_baseUrl/api/social/events').replace(queryParameters: queryParams);
+      
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+        },
+      );
 
-    // Filter by event type
-    if (eventType != null) {
-      filteredEvents = filteredEvents.where((event) => event.eventType == eventType).toList();
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final events = data['events'] as List;
+        return events.map((event) => CommunityEvent.fromJson(event)).toList();
+      } else {
+        throw Exception('Failed to fetch events: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch events: $e');
     }
-
-    // Filter by date range
-    if (startDate != null) {
-      filteredEvents = filteredEvents.where((event) => event.startDate.isAfter(startDate)).toList();
-    }
-    if (endDate != null) {
-      filteredEvents = filteredEvents.where((event) => event.endDate.isBefore(endDate)).toList();
-    }
-
-    // Filter by location
-    if (location != null) {
-      filteredEvents = filteredEvents.where((event) => 
-        event.location.toLowerCase().contains(location.toLowerCase())
-      ).toList();
-    }
-
-    // Filter by online status
-    if (isOnline != null) {
-      filteredEvents = filteredEvents.where((event) => event.isOnline == isOnline).toList();
-    }
-
-    // Sort by start date (upcoming first)
-    filteredEvents.sort((a, b) => a.startDate.compareTo(b.startDate));
-
-    // Pagination
-    final startIndex = page * limit;
-    final endIndex = startIndex + limit;
-    
-    if (startIndex >= filteredEvents.length) {
-      return [];
-    }
-
-    return filteredEvents.sublist(
-      startIndex, 
-      endIndex > filteredEvents.length ? filteredEvents.length : endIndex
-    );
   }
 
-  /// Join a community event
   Future<bool> joinEvent({
     required String eventId,
     required String userId,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/social/events/$eventId/join'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'userId': userId,
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
 
-    final eventIndex = _events.indexWhere((event) => event.id == eventId);
-    if (eventIndex == -1) return false;
-
-    final event = _events[eventIndex];
-    if (event.participants.contains(userId)) return false;
-    if (event.isFull) return false;
-
-    event.participants.add(userId);
-    _events[eventIndex] = event;
-
-    return true;
+      return response.statusCode == 200;
+    } catch (e) {
+      throw Exception('Failed to join event: $e');
+    }
   }
 
-  /// Leave a community event
   Future<bool> leaveEvent({
     required String eventId,
     required String userId,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    try {
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/api/social/events/$eventId/participants/$userId'),
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+        },
+      );
 
-    final eventIndex = _events.indexWhere((event) => event.id == eventId);
-    if (eventIndex == -1) return false;
-
-    final event = _events[eventIndex];
-    if (!event.participants.contains(userId)) return false;
-
-    event.participants.remove(userId);
-    _events[eventIndex] = event;
-
-    return true;
+      return response.statusCode == 200;
+    } catch (e) {
+      throw Exception('Failed to leave event: $e');
+    }
   }
 
-  /// Get expert profiles
   Future<List<ExpertProfile>> getExperts({
-    String? category,
-    String? searchQuery,
+    String? specialization,
+    String? location,
     bool? isVerified,
-    int page = 0,
+    int page = 1,
     int limit = 20,
-    String language = 'en',
   }) async {
-    await Future.delayed(const Duration(milliseconds: 400));
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      
+      if (specialization != null) queryParams['specialization'] = specialization;
+      if (location != null) queryParams['location'] = location;
+      if (isVerified != null) queryParams['isVerified'] = isVerified.toString();
 
-    List<ExpertProfile> filteredExperts = List.from(_experts);
+      final uri = Uri.parse('$_baseUrl/api/social/experts').replace(queryParameters: queryParams);
+      
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+        },
+      );
 
-    // Filter by category
-    if (category != null) {
-      filteredExperts = filteredExperts.where((expert) => 
-        expert.categories.contains(category)
-      ).toList();
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final experts = data['experts'] as List;
+        return experts.map((expert) => ExpertProfile.fromJson(expert)).toList();
+      } else {
+        throw Exception('Failed to fetch experts: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch experts: $e');
     }
-
-    // Filter by search query
-    if (searchQuery != null && searchQuery.isNotEmpty) {
-      filteredExperts = filteredExperts.where((expert) => 
-        expert.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
-        expert.specialization.toLowerCase().contains(searchQuery.toLowerCase()) ||
-        expert.categories.any((cat) => cat.toLowerCase().contains(searchQuery.toLowerCase()))
-      ).toList();
-    }
-
-    // Filter by verification status
-    if (isVerified != null) {
-      filteredExperts = filteredExperts.where((expert) => expert.isVerified == isVerified).toList();
-    }
-
-    // Sort by rating (highest first)
-    filteredExperts.sort((a, b) => b.rating.compareTo(a.rating));
-
-    // Pagination
-    final startIndex = page * limit;
-    final endIndex = startIndex + limit;
-    
-    if (startIndex >= filteredExperts.length) {
-      return [];
-    }
-
-    return filteredExperts.sublist(
-      startIndex, 
-      endIndex > filteredExperts.length ? filteredExperts.length : endIndex
-    );
   }
 
-  /// Verify an expert profile
   Future<bool> verifyExpert({
     required String expertId,
     required String verifierId,
-    required String verificationNotes,
+    required String verificationMethod,
+    Map<String, dynamic>? verificationData,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 800));
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/social/experts/$expertId/verify'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'verifierId': verifierId,
+          'verificationMethod': verificationMethod,
+          'verificationData': verificationData ?? {},
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
 
-    final expertIndex = _experts.indexWhere((expert) => expert.id == expertId);
-    if (expertIndex == -1) return false;
+      return response.statusCode == 200;
+    } catch (e) {
+      throw Exception('Failed to verify expert: $e');
+    }
+  }
 
-    final expert = _experts[expertIndex];
-    expert.isVerified = true;
-    expert.verificationDate = DateTime.now();
-    expert.verifierId = verifierId;
-    expert.verificationNotes = verificationNotes;
-    _experts[expertIndex] = expert;
+  Future<List<String>> getTrendingHashtags({
+    String? category,
+    int limit = 20,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'limit': limit.toString(),
+      };
+      
+      if (category != null) queryParams['category'] = category;
 
+      final uri = Uri.parse('$_baseUrl/api/social/hashtags/trending').replace(queryParameters: queryParams);
+      
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final hashtags = data['hashtags'] as List;
+        return hashtags.map((tag) => tag['name'] as String).toList();
+      } else {
+        throw Exception('Failed to fetch trending hashtags: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch trending hashtags: $e');
+    }
+  }
+
+  Future<SocialSearchResult> searchSocialContent({
+    required String query,
+    String? category,
+    String? location,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'q': query,
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      
+      if (category != null) queryParams['category'] = category;
+      if (location != null) queryParams['location'] = location;
+
+      final uri = Uri.parse('$_baseUrl/api/social/search').replace(queryParameters: queryParams);
+      
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return SocialSearchResult.fromJson(data);
+      } else {
+        throw Exception('Failed to search content: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to search content: $e');
+    }
+  }
+
+  // Helper method to extract hashtags from text
+  List<String> extractHashtags(String text) {
+    final hashtagRegex = RegExp(r'#\w+');
+    final matches = hashtagRegex.allMatches(text);
+    return matches.map((match) => match.group(0)!).toList();
+  }
+
+  // Helper method to validate post content
+  bool validatePostContent(String content) {
+    if (content.trim().isEmpty) return false;
+    if (content.length > 1000) return false; // Max 1000 characters
     return true;
   }
 
-  /// Get trending hashtags
-  Future<List<String>> getTrendingHashtags({
-    int limit = 10,
-    String language = 'en',
-  }) async {
-    await Future.delayed(const Duration(milliseconds: 200));
+  // Helper method to sanitize hashtags
+  List<String> sanitizeHashtags(List<String> hashtags) {
+    return hashtags
+        .map((tag) => tag.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), ''))
+        .where((tag) => tag.isNotEmpty)
+        .take(10) // Max 10 hashtags
+        .toList();
+  }
 
-    // Count hashtag usage
-    final hashtagCounts = <String, int>{};
-    for (final post in _posts) {
-      for (final hashtag in post.hashtags) {
-        hashtagCounts[hashtag] = (hashtagCounts[hashtag] ?? 0) + 1;
+  // Helper method to calculate engagement score
+  double calculateEngagementScore(SocialPost post) {
+    final likes = post.likeCount.toDouble();
+    final comments = post.commentCount.toDouble();
+    final shares = post.shareCount.toDouble();
+    
+    // Weighted engagement formula
+    return (likes * 1.0) + (comments * 2.0) + (shares * 3.0);
+  }
+
+  // Helper method to check if user can post
+  bool canUserPost(User user) {
+    // Check if user is suspended or has posting restrictions
+    if (user.isSuspended ?? false) return false;
+    if (user.postingRestricted ?? false) return false;
+    
+    // Check daily posting limit
+    final today = DateTime.now();
+    final userPostsToday = user.dailyPostCount ?? 0;
+    final maxPostsPerDay = user.maxPostsPerDay ?? 10;
+    
+    return userPostsToday < maxPostsPerDay;
+  }
+
+  // Helper method to get user's posting statistics
+  Map<String, dynamic> getUserPostingStats(String userId) {
+    // This would typically come from a database
+    // For now, return a basic structure
+    return {
+      'totalPosts': 0,
+      'totalLikes': 0,
+      'totalComments': 0,
+      'totalShares': 0,
+      'averageEngagement': 0.0,
+      'topPerformingPost': null,
+      'postingStreak': 0,
+    };
+  }
+
+  // Helper method to moderate content
+  bool moderateContent(String content) {
+    // Basic content moderation
+    final inappropriateWords = [
+      'spam', 'scam', 'inappropriate', 'offensive',
+      // Add more words as needed
+    ];
+    
+    final lowerContent = content.toLowerCase();
+    for (final word in inappropriateWords) {
+      if (lowerContent.contains(word)) {
+        return false; // Content flagged for moderation
       }
     }
-
-    // Sort by usage count and return top hashtags
-    final sortedHashtags = hashtagCounts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    return sortedHashtags.take(limit).map((e) => e.key).toList();
+    
+    return true; // Content passes moderation
   }
 
-  /// Search across all social content
-  Future<SocialSearchResult> searchSocialContent({
-    required String query,
-    String? contentType,
-    int page = 0,
-    int limit = 20,
-    String language = 'en',
-  }) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    final results = SocialSearchResult(
-      query: query,
-      posts: [],
-      groups: [],
-      events: [],
-      experts: [],
-      totalResults: 0,
-    );
-
-    // Search in posts
-    if (contentType == null || contentType == 'posts') {
-      results.posts = _posts.where((post) => 
-        post.title.toLowerCase().contains(query.toLowerCase()) ||
-        post.content.toLowerCase().contains(query.toLowerCase()) ||
-        post.hashtags.any((tag) => tag.toLowerCase().contains(query.toLowerCase()))
-      ).toList();
+  // Helper method to generate post recommendations
+  List<String> generatePostRecommendations(User user, List<SocialPost> recentPosts) {
+    final recommendations = <String>[];
+    
+    // Analyze user's posting patterns
+    final postTypes = recentPosts.map((post) => post.type).toSet();
+    
+    if (!postTypes.contains(PostType.petPhoto)) {
+      recommendations.add('Share a photo of your pet');
     }
-
-    // Search in groups
-    if (contentType == null || contentType == 'groups') {
-      results.groups = _groups.where((group) => 
-        group.name.toLowerCase().contains(query.toLowerCase()) ||
-        group.description.toLowerCase().contains(query.toLowerCase()) ||
-        group.tags.any((tag) => tag.toLowerCase().contains(query.toLowerCase()))
-      ).toList();
+    
+    if (!postTypes.contains(PostType.healthUpdate)) {
+      recommendations.add('Update on your pet\'s health journey');
     }
-
-    // Search in events
-    if (contentType == null || contentType == 'events') {
-      results.events = _events.where((event) => 
-        event.title.toLowerCase().contains(query.toLowerCase()) ||
-        event.description.toLowerCase().contains(query.toLowerCase()) ||
-        event.tags.any((tag) => tag.toLowerCase().contains(query.toLowerCase()))
-      ).toList();
+    
+    if (!postTypes.contains(PostType.trainingProgress)) {
+      recommendations.add('Share your training achievements');
     }
-
-    // Search in experts
-    if (contentType == null || contentType == 'experts') {
-      results.experts = _experts.where((expert) => 
-        expert.name.toLowerCase().contains(query.toLowerCase()) ||
-        expert.specialization.toLowerCase().contains(query.toLowerCase()) ||
-        expert.categories.any((cat) => cat.toLowerCase().contains(query.toLowerCase()))
-      ).toList();
+    
+    if (!postTypes.contains(PostType.communityQuestion)) {
+      recommendations.add('Ask the community for advice');
     }
-
-    results.totalResults = results.posts.length + results.groups.length + 
-                          results.events.length + results.experts.length;
-
-    return results;
+    
+    return recommendations;
   }
 
-  // Private helper methods
-  void _initializePosts() {
-    _posts.addAll([
-      SocialPost(
-        id: '1',
-        userId: 'user1',
-        userName: 'Sarah Johnson',
-        userPhotoUrl: 'https://example.com/sarah.jpg',
-        type: PostType.petPhoto,
-        title: 'Luna\'s morning walk!',
-        content: 'Beautiful morning walk with my Golden Retriever Luna. She loves exploring new trails!',
-        images: ['https://example.com/luna_walk1.jpg', 'https://example.com/luna_walk2.jpg'],
-        hashtags: ['#GoldenRetriever', '#MorningWalk', '#PetLife', '#OutdoorAdventures'],
-        likes: 24,
-        comments: 8,
-        shares: 3,
-        likedBy: ['user2', 'user3', 'user4'],
-        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-        metadata: {'language': 'en'},
-      ),
-      SocialPost(
-        id: '2',
-        userId: 'user2',
-        userName: 'Mike Chen',
-        userPhotoUrl: 'https://example.com/mike.jpg',
-        type: PostType.achievement,
-        title: 'Whiskers learned a new trick!',
-        content: 'After weeks of training, Whiskers finally mastered the high-five! So proud of my smart cat.',
-        images: ['https://example.com/whiskers_trick.jpg'],
-        hashtags: ['#CatTraining', '#SmartCat', '#Achievement', '#PetTraining'],
-        likes: 31,
-        comments: 12,
-        shares: 5,
-        likedBy: ['user1', 'user3', 'user5'],
-        createdAt: DateTime.now().subtract(const Duration(hours: 5)),
-        metadata: {'language': 'en'},
-      ),
-      SocialPost(
-        id: '3',
-        userId: 'user3',
-        userName: 'Emma Rodriguez',
-        userPhotoUrl: 'https://example.com/emma.jpg',
-        type: PostType.healthUpdate,
-        title: 'Buddy\'s recovery journey',
-        content: 'Update on Buddy\'s recovery from surgery. He\'s doing great and getting stronger every day!',
-        images: ['https://example.com/buddy_recovery.jpg'],
-        hashtags: ['#PetRecovery', '#HealthUpdate', '#PetCare', '#RecoveryJourney'],
-        likes: 45,
-        comments: 15,
-        shares: 8,
-        likedBy: ['user1', 'user2', 'user4', 'user5'],
-        createdAt: DateTime.now().subtract(const Duration(hours: 8)),
-        metadata: {'language': 'en'},
-      ),
-    ]);
+  // Helper method to calculate trending score
+  double calculateTrendingScore(SocialPost post) {
+    final now = DateTime.now();
+    final postAge = now.difference(post.timestamp).inHours;
+    final engagement = calculateEngagementScore(post);
+    
+    // Trending algorithm: engagement / (age + 2)^1.5
+    return engagement / pow(postAge + 2, 1.5);
   }
 
-  void _initializeGroups() {
-    _groups.addAll([
-      CommunityGroup(
-        id: '1',
-        name: 'Golden Retriever Lovers',
-        description: 'A community for Golden Retriever owners to share experiences, tips, and adorable photos.',
-        category: 'Dog Breeds',
-        creatorId: 'user1',
-        creatorName: 'Sarah Johnson',
-        tags: ['Golden Retriever', 'Dogs', 'Pet Care', 'Training'],
-        imageUrl: 'https://example.com/golden_group.jpg',
-        isPrivate: false,
-        memberCount: 1247,
-        members: ['user1', 'user2', 'user3'],
-        posts: ['post1', 'post2'],
-        createdAt: DateTime.now().subtract(const Duration(days: 30)),
-        language: 'en',
-      ),
-      CommunityGroup(
-        id: '2',
-        name: 'Cat Training Enthusiasts',
-        description: 'Share cat training techniques, success stories, and help each other with training challenges.',
-        category: 'Cat Care',
-        creatorId: 'user2',
-        creatorName: 'Mike Chen',
-        tags: ['Cat Training', 'Cats', 'Behavior', 'Tips'],
-        imageUrl: 'https://example.com/cat_training_group.jpg',
-        isPrivate: false,
-        memberCount: 892,
-        members: ['user2', 'user3', 'user4'],
-        posts: ['post2', 'post3'],
-        createdAt: DateTime.now().subtract(const Duration(days: 45)),
-        language: 'en',
-      ),
-      CommunityGroup(
-        id: '3',
-        name: 'Pet Health & Wellness',
-        description: 'Professional advice and community support for pet health and wellness topics.',
-        category: 'Health & Wellness',
-        creatorId: 'user5',
-        creatorName: 'Dr. Lisa Thompson',
-        tags: ['Pet Health', 'Wellness', 'Veterinary', 'Care'],
-        imageUrl: 'https://example.com/health_group.jpg',
-        isPrivate: false,
-        memberCount: 2156,
-        members: ['user1', 'user2', 'user3', 'user4', 'user5'],
-        posts: ['post1', 'post3'],
-        createdAt: DateTime.now().subtract(const Duration(days: 60)),
-        language: 'en',
-      ),
-    ]);
-  }
+  // Helper method to get related posts
+  Future<List<SocialPost>> getRelatedPosts(SocialPost post, {int limit = 5}) async {
+    try {
+      final queryParams = <String, String>{
+        'postId': post.id,
+        'limit': limit.toString(),
+      };
 
-  void _initializeEvents() {
-    _events.addAll([
-      CommunityEvent(
-        id: '1',
-        title: 'Pet Wellness Workshop',
-        description: 'Join us for a comprehensive workshop on pet wellness, nutrition, and preventive care.',
-        eventType: 'Workshop',
-        startDate: DateTime.now().add(const Duration(days: 7)),
-        endDate: DateTime.now().add(const Duration(days: 7, hours: 3)),
-        location: 'Central Park Community Center',
-        isOnline: false,
-        maxParticipants: 50,
-        participants: ['user1', 'user2', 'user3'],
-        tags: ['Wellness', 'Workshop', 'Education', 'Pet Care'],
-        imageUrl: 'https://example.com/wellness_workshop.jpg',
-        organizerId: 'user5',
-        organizerName: 'Dr. Lisa Thompson',
-        eventColor: Colors.blue,
-      ),
-      CommunityEvent(
-        id: '2',
-        title: 'Virtual Pet Training Session',
-        description: 'Online training session covering basic obedience commands and behavior modification.',
-        eventType: 'Training',
-        startDate: DateTime.now().add(const Duration(days: 3)),
-        endDate: DateTime.now().add(const Duration(days: 3, hours: 2)),
-        location: 'Online (Zoom)',
-        isOnline: true,
-        maxParticipants: 100,
-        participants: ['user2', 'user4'],
-        tags: ['Training', 'Online', 'Obedience', 'Behavior'],
-        imageUrl: 'https://example.com/training_session.jpg',
-        organizerId: 'user2',
-        organizerName: 'Mike Chen',
-        eventColor: Colors.green,
-      ),
-      CommunityEvent(
-        id: '3',
-        title: 'Pet Adoption Day',
-        description: 'Help find loving homes for rescue pets. Meet adoptable pets and learn about adoption process.',
-        eventType: 'Adoption',
-        startDate: DateTime.now().add(const Duration(days: 14)),
-        endDate: DateTime.now().add(const Duration(days: 14, hours: 6)),
-        location: 'Local Animal Shelter',
-        isOnline: false,
-        maxParticipants: 200,
-        participants: ['user1', 'user3', 'user5'],
-        tags: ['Adoption', 'Rescue', 'Pet Care', 'Community'],
-        imageUrl: 'https://example.com/adoption_day.jpg',
-        organizerId: 'user3',
-        organizerName: 'Emma Rodriguez',
-        eventColor: Colors.orange,
-      ),
-    ]);
-  }
-
-  void _initializeExperts() {
-    _experts.addAll([
-      ExpertProfile(
-        id: '1',
-        name: 'Dr. Lisa Thompson',
-        specialization: 'Veterinary Medicine',
-        categories: ['Health & Wellness', 'Emergency Care', 'Preventive Medicine'],
-        credentials: ['DVM', 'PhD in Veterinary Science'],
-        experience: 15,
-        rating: 4.9,
-        reviewCount: 127,
-        isVerified: true,
-        verificationDate: DateTime.now().subtract(const Duration(days: 180)),
-        verifierId: 'admin1',
-        verificationNotes: 'Verified veterinary credentials and license',
-        photoUrl: 'https://example.com/dr_lisa.jpg',
-        bio: 'Experienced veterinarian with expertise in preventive care and emergency medicine.',
-        languages: ['English', 'Spanish'],
-        consultationFee: 150.0,
-        availability: ['Monday', 'Wednesday', 'Friday'],
-        contactInfo: {
-          'email': 'dr.lisa@example.com',
-          'phone': '+1-555-0123',
+      final uri = Uri.parse('$_baseUrl/api/social/posts/${post.id}/related').replace(queryParameters: queryParams);
+      
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
         },
-      ),
-      ExpertProfile(
-        id: '2',
-        name: 'Mike Chen',
-        specialization: 'Cat Behavior & Training',
-        categories: ['Cat Training', 'Behavior Modification', 'Enrichment'],
-        credentials: ['Certified Cat Behaviorist', 'Feline Training Specialist'],
-        experience: 8,
-        rating: 4.8,
-        reviewCount: 89,
-        isVerified: true,
-        verificationDate: DateTime.now().subtract(const Duration(days: 120)),
-        verifierId: 'admin1',
-        verificationNotes: 'Verified cat behaviorist certification',
-        photoUrl: 'https://example.com/mike_expert.jpg',
-        bio: 'Specialized in understanding cat behavior and developing effective training methods.',
-        languages: ['English', 'Mandarin'],
-        consultationFee: 75.0,
-        availability: ['Tuesday', 'Thursday', 'Saturday'],
-        contactInfo: {
-          'email': 'mike.chen@example.com',
-          'phone': '+1-555-0456',
-        },
-      ),
-      ExpertProfile(
-        id: '3',
-        name: 'Sarah Johnson',
-        specialization: 'Dog Training & Socialization',
-        categories: ['Dog Training', 'Socialization', 'Behavior'],
-        credentials: ['Certified Dog Trainer', 'Canine Behavior Specialist'],
-        experience: 12,
-        rating: 4.7,
-        reviewCount: 156,
-        isVerified: true,
-        verificationDate: DateTime.now().subtract(const Duration(days: 90)),
-        verifierId: 'admin1',
-        verificationNotes: 'Verified dog training certification',
-        photoUrl: 'https://example.com/sarah_expert.jpg',
-        bio: 'Passionate about helping dogs and their owners build strong, positive relationships.',
-        languages: ['English'],
-        consultationFee: 85.0,
-        availability: ['Monday', 'Tuesday', 'Thursday', 'Friday'],
-        contactInfo: {
-          'email': 'sarah.johnson@example.com',
-          'phone': '+1-555-0789',
-        },
-      ),
-    ]);
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final posts = data['posts'] as List;
+        return posts.map((p) => SocialPost.fromJson(p)).toList();
+      } else {
+        return [];
+      }
+    } catch (e) {
+      return [];
+    }
   }
 
-  Color _getRandomEventColor() {
-    final colors = [
-      Colors.blue,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
-      Colors.teal,
-      Colors.indigo,
-      Colors.pink,
-      Colors.amber,
-    ];
-    return colors[DateTime.now().millisecond % colors.length];
+  // Helper method to get user's social influence score
+  double calculateSocialInfluenceScore(User user) {
+    // This would typically calculate based on:
+    // - Follower count
+    // - Post engagement rates
+    // - Community participation
+    // - Expert verification status
+    // - Content quality scores
+    
+    double score = 0.0;
+    
+    // Base score from followers
+    score += (user.followerCount ?? 0) * 0.1;
+    
+    // Bonus for verified experts
+    if (user.isExpertVerified ?? false) {
+      score += 50.0;
+    }
+    
+    // Bonus for active community members
+    if (user.communityParticipationScore != null) {
+      score += user.communityParticipationScore! * 10.0;
+    }
+    
+    return score.clamp(0.0, 100.0);
   }
 }
 
-// Additional models for social network features
-class CommunityGroup {
-  final String id;
-  final String name;
-  final String description;
-  final String category;
-  final String creatorId;
-  final String creatorName;
-  final List<String> tags;
-  final String imageUrl;
-  final bool isPrivate;
-  int memberCount;
-  final List<String> members;
-  final List<String> posts;
-  final DateTime createdAt;
-  final String language;
-
-  CommunityGroup({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.category,
-    required this.creatorId,
-    required this.creatorName,
-    required this.tags,
-    required this.imageUrl,
-    required this.isPrivate,
-    required this.memberCount,
-    required this.members,
-    required this.posts,
-    required this.createdAt,
-    required this.language,
-  });
-
-  factory CommunityGroup.fromJson(Map<String, dynamic> json) {
-    return CommunityGroup(
-      id: json['id'],
-      name: json['name'],
-      description: json['description'],
-      category: json['category'],
-      creatorId: json['creatorId'],
-      creatorName: json['creatorName'],
-      tags: List<String>.from(json['tags'] ?? []),
-      imageUrl: json['imageUrl'] ?? '',
-      isPrivate: json['isPrivate'] ?? false,
-      memberCount: json['memberCount'] ?? 0,
-      members: List<String>.from(json['members'] ?? []),
-      posts: List<String>.from(json['posts'] ?? []),
-      createdAt: DateTime.parse(json['createdAt']),
-      language: json['language'] ?? 'en',
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'description': description,
-      'category': category,
-      'creatorId': creatorId,
-      'creatorName': creatorName,
-      'tags': tags,
-      'imageUrl': imageUrl,
-      'isPrivate': isPrivate,
-      'memberCount': memberCount,
-      'members': members,
-      'posts': posts,
-      'createdAt': createdAt.toIso8601String(),
-      'language': language,
-    };
-  }
-}
-
-class ExpertProfile {
-  final String id;
-  final String name;
-  final String specialization;
-  final List<String> categories;
-  final List<String> credentials;
-  final int experience;
-  final double rating;
-  final int reviewCount;
-  bool isVerified;
-  DateTime? verificationDate;
-  String? verifierId;
-  String? verificationNotes;
-  final String photoUrl;
-  final String bio;
-  final List<String> languages;
-  final double consultationFee;
-  final List<String> availability;
-  final Map<String, String> contactInfo;
-
-  ExpertProfile({
-    required this.id,
-    required this.name,
-    required this.specialization,
-    required this.categories,
-    required this.credentials,
-    required this.experience,
-    required this.rating,
-    required this.reviewCount,
-    required this.isVerified,
-    this.verificationDate,
-    this.verifierId,
-    this.verificationNotes,
-    required this.photoUrl,
-    required this.bio,
-    required this.languages,
-    required this.consultationFee,
-    required this.availability,
-    required this.contactInfo,
-  });
-
-  factory ExpertProfile.fromJson(Map<String, dynamic> json) {
-    return ExpertProfile(
-      id: json['id'],
-      name: json['name'],
-      specialization: json['specialization'],
-      categories: List<String>.from(json['categories'] ?? []),
-      credentials: List<String>.from(json['credentials'] ?? []),
-      experience: json['experience'] ?? 0,
-      rating: json['rating']?.toDouble() ?? 0.0,
-      reviewCount: json['reviewCount'] ?? 0,
-      isVerified: json['isVerified'] ?? false,
-      verificationDate: json['verificationDate'] != null 
-          ? DateTime.parse(json['verificationDate']) 
-          : null,
-      verifierId: json['verifierId'],
-      verificationNotes: json['verificationNotes'],
-      photoUrl: json['photoUrl'] ?? '',
-      bio: json['bio'],
-      languages: List<String>.from(json['languages'] ?? []),
-      consultationFee: json['consultationFee']?.toDouble() ?? 0.0,
-      availability: List<String>.from(json['availability'] ?? []),
-      contactInfo: Map<String, String>.from(json['contactInfo'] ?? {}),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'specialization': specialization,
-      'categories': categories,
-      'credentials': credentials,
-      'experience': experience,
-      'rating': rating,
-      'reviewCount': reviewCount,
-      'isVerified': isVerified,
-      'verificationDate': verificationDate?.toIso8601String(),
-      'verifierId': verifierId,
-      'verificationNotes': verificationNotes,
-      'photoUrl': photoUrl,
-      'bio': bio,
-      'languages': languages,
-      'consultationFee': consultationFee,
-      'availability': availability,
-      'contactInfo': contactInfo,
-    };
-  }
-}
-
-class SocialSearchResult {
-  final String query;
-  List<SocialPost> posts;
-  List<CommunityGroup> groups;
-  List<CommunityEvent> events;
-  List<ExpertProfile> experts;
-  int totalResults;
-
-  SocialSearchResult({
-    required this.query,
-    required this.posts,
-    required this.groups,
-    required this.events,
-    required this.experts,
-    required this.totalResults,
-  });
+// Helper function for power calculation
+double pow(double x, double exponent) {
+  return x.pow(exponent);
 }

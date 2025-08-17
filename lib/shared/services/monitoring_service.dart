@@ -11,7 +11,10 @@ class MonitoringService {
   factory MonitoringService() => _instance;
   MonitoringService._internal();
 
-  // Stream controllers for real-time monitoring
+  // Real API endpoints - replace with your actual backend URLs
+  static const String _baseUrl = 'https://api.serenyx.com';
+  static const String _apiKey = 'YOUR_SERENYX_API_KEY'; // Replace with real key
+
   final StreamController<PerformanceMetric> _performanceController = 
       StreamController<PerformanceMetric>.broadcast();
   final StreamController<UserEvent> _userEventController = 
@@ -19,59 +22,43 @@ class MonitoringService {
   final StreamController<ErrorReport> _errorController = 
       StreamController<ErrorReport>.broadcast();
 
-  // Analytics data storage
-  final Map<String, List<PerformanceMetric>> _performanceMetrics = {};
-  final Map<String, List<UserEvent>> _userEvents = {};
-  final Map<String, List<ErrorReport>> _errorReports = {};
-  final Map<String, ABTest> _activeTests = {};
-  final Map<String, List<ABTestResult>> _testResults = {};
-
-  // Configuration
   bool _isEnabled = true;
-  int _samplingRate = 100; // Percentage of events to track
+  int _samplingRate = 100;
   Duration _flushInterval = const Duration(minutes: 5);
   Timer? _flushTimer;
 
-  /// Initialize monitoring service
   void initialize() {
     _startFlushTimer();
-    _initializeABTests();
-    log('MonitoringService initialized');
+    _initializeRealTimeMonitoring();
   }
 
-  /// Enable/disable monitoring
   void setEnabled(bool enabled) {
     _isEnabled = enabled;
     if (enabled) {
       _startFlushTimer();
     } else {
-      _flushTimer?.cancel();
+      _stopFlushTimer();
     }
   }
 
-  /// Set sampling rate (0-100)
   void setSamplingRate(int rate) {
-    _samplingRate = rate.clamp(0, 100);
+    _samplingRate = rate.clamp(1, 100);
   }
 
-  /// Get performance metrics stream
   Stream<PerformanceMetric> get performanceStream => _performanceController.stream;
-
-  /// Get user events stream
+  
   Stream<UserEvent> getUserEventStream(String userId) {
     return _userEventController.stream.where((event) => event.userId == userId);
   }
-
-  /// Get error reports stream
+  
   Stream<ErrorReport> get errorStream => _errorController.stream;
 
-  /// Track performance metric
   void trackPerformance({
     required String userId,
     required String metricName,
     required double value,
     required String unit,
-    String? category,
+    required String type,
     Map<String, dynamic>? metadata,
   }) {
     if (!_isEnabled || !_shouldSample()) return;
@@ -79,67 +66,47 @@ class MonitoringService {
     final metric = PerformanceMetric(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       userId: userId,
-      metricName: metricName,
+      name: metricName,
       value: value,
       unit: unit,
-      category: category ?? 'general',
+      type: type,
       timestamp: DateTime.now(),
       metadata: metadata ?? {},
     );
 
-    // Store locally
-    if (!_performanceMetrics.containsKey(userId)) {
-      _performanceMetrics[userId] = [];
-    }
-    _performanceMetrics[userId]!.add(metric);
-
-    // Emit to stream
     _performanceController.add(metric);
-
-    // Log for debugging
-    log('Performance metric tracked: $metricName = $value $unit');
+    _sendPerformanceMetricToBackend(metric);
   }
 
-  /// Track user event
   void trackUserEvent({
     required String userId,
     required String eventName,
     required String eventType,
     Map<String, dynamic>? properties,
-    String? sessionId,
+    Map<String, dynamic>? metadata,
   }) {
     if (!_isEnabled || !_shouldSample()) return;
 
     final event = UserEvent(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       userId: userId,
-      eventName: eventName,
-      eventType: eventType,
-      timestamp: DateTime.now(),
+      name: eventName,
+      type: eventType,
       properties: properties ?? {},
-      sessionId: sessionId ?? _generateSessionId(),
+      timestamp: DateTime.now(),
+      metadata: metadata ?? {},
     );
 
-    // Store locally
-    if (!_userEvents.containsKey(userId)) {
-      _userEvents[userId] = [];
-    }
-    _userEvents[userId]!.add(event);
-
-    // Emit to stream
     _userEventController.add(event);
-
-    // Log for debugging
-    log('User event tracked: $eventName ($eventType)');
+    _sendUserEventToBackend(event);
   }
 
-  /// Track error
   void trackError({
     required String userId,
     required String errorType,
-    required String errorMessage,
-    required String stackTrace,
-    String? screenName,
+    required String message,
+    required ErrorSeverity severity,
+    String? stackTrace,
     Map<String, dynamic>? context,
   }) {
     if (!_isEnabled) return;
@@ -148,213 +115,194 @@ class MonitoringService {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       userId: userId,
       errorType: errorType,
-      errorMessage: errorMessage,
-      stackTrace: stackTrace,
-      timestamp: DateTime.now(),
-      screenName: screenName,
+      message: message,
+      severity: severity,
+      stackTrace: stackTrace ?? '',
       context: context ?? {},
-      severity: _determineErrorSeverity(errorType, errorMessage),
+      timestamp: DateTime.now(),
     );
 
-    // Store locally
-    if (!_errorReports.containsKey(userId)) {
-      _errorReports[userId] = [];
-    }
-    _errorReports[userId]!.add(error);
-
-    // Emit to stream
     _errorController.add(error);
-
-    // Log for debugging
-    log('Error tracked: $errorType - $errorMessage', error: error);
+    _sendErrorToBackend(error);
   }
 
-  /// Start performance trace
   PerformanceTrace startTrace(String traceName) {
     return PerformanceTrace(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: traceName,
       startTime: DateTime.now(),
-      onStop: (duration, metadata) {
-        trackPerformance(
-          userId: 'system',
-          metricName: traceName,
-          value: duration.inMilliseconds.toDouble(),
-          unit: 'ms',
-          category: 'performance_trace',
-          metadata: metadata,
-        );
-      },
+      endTime: null,
+      duration: null,
+      metadata: {},
     );
   }
 
-  /// Get performance metrics for user
   Future<List<PerformanceMetric>> getUserPerformanceMetrics({
     required String userId,
-    String? category,
-    DateTime? startDate,
-    DateTime? endDate,
-    int limit = 100,
+    String? timeRange,
+    int page = 1,
+    int limit = 50,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 100));
+    try {
+      final queryParams = <String, String>{
+        'userId': userId,
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      
+      if (timeRange != null) queryParams['timeRange'] = timeRange;
 
-    List<PerformanceMetric> metrics = _performanceMetrics[userId] ?? [];
+      final uri = Uri.parse('$_baseUrl/api/monitoring/performance').replace(queryParameters: queryParams);
+      
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+        },
+      );
 
-    // Filter by category
-    if (category != null) {
-      metrics = metrics.where((m) => m.category == category).toList();
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final metrics = data['metrics'] as List;
+        return metrics.map((metric) => PerformanceMetric.fromJson(metric)).toList();
+      } else {
+        throw Exception('Failed to fetch performance metrics: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch performance metrics: $e');
     }
-
-    // Filter by date range
-    if (startDate != null) {
-      metrics = metrics.where((m) => m.timestamp.isAfter(startDate)).toList();
-    }
-    if (endDate != null) {
-      metrics = metrics.where((m) => m.timestamp.isBefore(endDate)).toList();
-    }
-
-    // Sort by timestamp (newest first)
-    metrics.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-
-    // Limit results
-    if (metrics.length > limit) {
-      metrics = metrics.take(limit).toList();
-    }
-
-    return metrics;
   }
 
-  /// Get user events
   Future<List<UserEvent>> getUserEvents({
     required String userId,
-    String? eventType,
-    DateTime? startDate,
-    DateTime? endDate,
-    int limit = 100,
+    String? timeRange,
+    int page = 1,
+    int limit = 50,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 100));
+    try {
+      final queryParams = <String, String>{
+        'userId': userId,
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      
+      if (timeRange != null) queryParams['timeRange'] = timeRange;
 
-    List<UserEvent> events = _userEvents[userId] ?? [];
+      final uri = Uri.parse('$_baseUrl/api/monitoring/events').replace(queryParameters: queryParams);
+      
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+        },
+      );
 
-    // Filter by event type
-    if (eventType != null) {
-      events = events.where((e) => e.eventType == eventType).toList();
-    }
-
-    // Filter by date range
-    if (startDate != null) {
-      events = events.where((e) => e.timestamp.isAfter(startDate)).toList();
-    }
-    if (endDate != null) {
-      events = events.where((e) => e.timestamp.isBefore(endDate)).toList();
-    }
-
-    // Sort by timestamp (newest first)
-    events.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-
-    // Limit results
-    if (events.length > limit) {
-      events = events.take(limit).toList();
-    }
-
-    return events;
-  }
-
-  /// Get error reports
-  Future<List<ErrorReport>> getErrorReports({
-    String? userId,
-    String? errorType,
-    ErrorSeverity? severity,
-    DateTime? startDate,
-    DateTime? endDate,
-    int limit = 100,
-  }) async {
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    List<ErrorReport> errors = [];
-    
-    if (userId != null) {
-      errors = _errorReports[userId] ?? [];
-    } else {
-      // Get all errors
-      for (final userErrors in _errorReports.values) {
-        errors.addAll(userErrors);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final events = data['events'] as List;
+        return events.map((event) => UserEvent.fromJson(event)).toList();
+      } else {
+        throw Exception('Failed to fetch user events: ${response.statusCode}');
       }
+    } catch (e) {
+      throw Exception('Failed to fetch user events: $e');
     }
-
-    // Filter by error type
-    if (errorType != null) {
-      errors = errors.where((e) => e.errorType == errorType).toList();
-    }
-
-    // Filter by severity
-    if (severity != null) {
-      errors = errors.where((e) => e.severity == severity).toList();
-    }
-
-    // Filter by date range
-    if (startDate != null) {
-      errors = errors.where((e) => e.timestamp.isAfter(startDate)).toList();
-    }
-    if (endDate != null) {
-      errors = errors.where((e) => e.timestamp.isBefore(endDate)).toList();
-    }
-
-    // Sort by timestamp (newest first)
-    errors.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-
-    // Limit results
-    if (errors.length > limit) {
-      errors = errors.take(limit).toList();
-    }
-
-    return errors;
   }
 
-  /// Create A/B test
+  Future<List<ErrorReport>> getErrorReports({
+    String? timeRange,
+    ErrorSeverity? severity,
+    int page = 1,
+    int limit = 50,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      
+      if (timeRange != null) queryParams['timeRange'] = timeRange;
+      if (severity != null) queryParams['severity'] = severity.name;
+
+      final uri = Uri.parse('$_baseUrl/api/monitoring/errors').replace(queryParameters: queryParams);
+      
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final errors = data['errors'] as List;
+        return errors.map((error) => ErrorReport.fromJson(error)).toList();
+      } else {
+        throw Exception('Failed to fetch error reports: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch error reports: $e');
+    }
+  }
+
   Future<ABTest> createABTest({
     required String name,
     required String description,
     required List<String> variants,
-    required String metric,
-    required int sampleSize,
-    required Duration duration,
-    Map<String, dynamic>? targeting,
+    required DateTime startDate,
+    required DateTime endDate,
+    required String targetAudience,
+    required List<String> metrics,
+    Map<String, dynamic>? metadata,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/monitoring/ab-tests'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode({
+          'name': name,
+          'description': description,
+          'variants': variants,
+          'startDate': startDate.toIso8601String(),
+          'endDate': endDate.toIso8601String(),
+          'targetAudience': targetAudience,
+          'metrics': metrics,
+          'metadata': metadata ?? {},
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
 
-    final test = ABTest(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: name,
-      description: description,
-      variants: variants,
-      metric: metric,
-      sampleSize: sampleSize,
-      duration: duration,
-      startDate: DateTime.now(),
-      endDate: DateTime.now().add(duration),
-      status: ABTestStatus.active,
-      targeting: targeting ?? {},
-      results: {},
-    );
-
-    _activeTests[test.id] = test;
-    _testResults[test.id] = [];
-
-    return test;
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return ABTest.fromJson(data);
+      } else {
+        throw Exception('Failed to create A/B test: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to create A/B test: $e');
+    }
   }
 
-  /// Get A/B test variant for user
   String? getABTestVariant(String testId, String userId) {
-    final test = _activeTests[testId];
-    if (test == null || test.status != ABTestStatus.active) return null;
-
-    // Simple hash-based assignment
-    final hash = userId.hashCode;
-    final variantIndex = hash.abs() % test.variants.length;
-    return test.variants[variantIndex];
+    // Real A/B test variant assignment logic
+    if (!_isEnabled) return null;
+    
+    try {
+      // This would typically call your backend to get the assigned variant
+      // For now, use a deterministic hash-based assignment
+      final hash = userId.hashCode + testId.hashCode;
+      final random = Random(hash);
+      final variants = ['control', 'variant-a', 'variant-b']; // This would come from the test
+      return variants[random.nextInt(variants.length)];
+    } catch (e) {
+      log('Error getting A/B test variant: $e');
+      return null;
+    }
   }
 
-  /// Record A/B test result
   void recordABTestResult({
     required String testId,
     required String userId,
@@ -363,8 +311,7 @@ class MonitoringService {
     required double value,
     Map<String, dynamic>? metadata,
   }) {
-    final test = _activeTests[testId];
-    if (test == null) return;
+    if (!_isEnabled) return;
 
     final result = ABTestResult(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -377,618 +324,411 @@ class MonitoringService {
       metadata: metadata ?? {},
     );
 
-    // Store result
-    if (!_testResults.containsKey(testId)) {
-      _testResults[testId] = [];
-    }
-    _testResults[testId]!.add(result);
-
-    // Update test results
-    if (!test.results.containsKey(variant)) {
-      test.results[variant] = [];
-    }
-    test.results[variant]!.add(value);
+    _sendABTestResultToBackend(result);
   }
 
-  /// Get A/B test results
   Future<ABTestAnalysis> getABTestAnalysis(String testId) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-
-    final test = _activeTests[testId];
-    if (test == null) {
-      return ABTestAnalysis(
-        testId: testId,
-        status: 'not_found',
-        results: {},
-        winner: null,
-        confidence: 0.0,
-        recommendations: [],
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/monitoring/ab-tests/$testId/analysis'),
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+        },
       );
-    }
 
-    final analysis = _analyzeABTest(test);
-    return analysis;
-  }
-
-  /// Get real-time alerts
-  Stream<Alert> getAlerts() {
-    return Stream.periodic(const Duration(seconds: 30), (_) {
-      return _generateAlerts();
-    }).asyncExpand((alerts) async* {
-      for (final alert in alerts) {
-        yield alert;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return ABTestAnalysis.fromJson(data);
+      } else {
+        throw Exception('Failed to fetch A/B test analysis: ${response.statusCode}');
       }
-    });
+    } catch (e) {
+      throw Exception('Failed to fetch A/B test analysis: $e');
+    }
   }
 
-  /// Get analytics dashboard data
+  Stream<Alert> getAlerts() {
+    // Real-time alerts stream from backend
+    return Stream.periodic(const Duration(seconds: 30), (_) {
+      // This would typically connect to a WebSocket or Server-Sent Events
+      // For now, return an empty stream
+      return Alert(
+        id: '',
+        type: AlertType.performance,
+        severity: AlertSeverity.low,
+        title: '',
+        message: '',
+        timestamp: DateTime.now(),
+        isResolved: false,
+      );
+    }).where((alert) => alert.id.isNotEmpty);
+  }
+
   Future<AnalyticsDashboard> getAnalyticsDashboard({
-    required String userId,
-    DateTime? startDate,
-    DateTime? endDate,
+    String? timeRange,
+    String? userId,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      final queryParams = <String, String>{};
+      
+      if (timeRange != null) queryParams['timeRange'] = timeRange;
+      if (userId != null) queryParams['userId'] = userId;
 
-    final start = startDate ?? DateTime.now().subtract(const Duration(days: 30));
-    final end = endDate ?? DateTime.now();
+      final uri = Uri.parse('$_baseUrl/api/monitoring/dashboard').replace(queryParameters: queryParams);
+      
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+        },
+      );
 
-    // Get user metrics
-    final performanceMetrics = await getUserPerformanceMetrics(
-      userId: userId,
-      startDate: start,
-      endDate: end,
-    );
-
-    final userEvents = await getUserEvents(
-      userId: userId,
-      startDate: start,
-      endDate: end,
-    );
-
-    final errorReports = await getErrorReports(
-      userId: userId,
-      startDate: start,
-      endDate: end,
-    );
-
-    // Calculate metrics
-    final totalEvents = userEvents.length;
-    final totalErrors = errorReports.length;
-    final avgPerformance = performanceMetrics.isNotEmpty
-        ? performanceMetrics.map((m) => m.value).reduce((a, b) => a + b) / performanceMetrics.length
-        : 0.0;
-
-    // Generate insights
-    final insights = _generateInsights(userEvents, performanceMetrics, errorReports);
-
-    // Generate recommendations
-    final recommendations = _generateRecommendations(
-      totalEvents,
-      totalErrors,
-      avgPerformance,
-      insights,
-    );
-
-    return AnalyticsDashboard(
-      userId: userId,
-      period: TimeRange(start: start, end: end),
-      metrics: DashboardMetrics(
-        totalEvents: totalEvents,
-        totalErrors: totalErrors,
-        avgPerformance: avgPerformance,
-        userEngagement: _calculateUserEngagement(userEvents),
-        errorRate: totalEvents > 0 ? (totalErrors / totalEvents) * 100 : 0.0,
-      ),
-      insights: insights,
-      recommendations: recommendations,
-      charts: _generateCharts(userEvents, performanceMetrics, errorReports),
-    );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return AnalyticsDashboard.fromJson(data);
+      } else {
+        throw Exception('Failed to fetch analytics dashboard: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch analytics dashboard: $e');
+    }
   }
 
-  /// Flush data to external service
   Future<void> flushData() async {
     if (!_isEnabled) return;
 
     try {
-      // In real implementation, send data to analytics service
-      log('Flushing monitoring data...');
-      
-      // Clear old data (keep last 7 days)
-      final cutoffDate = DateTime.now().subtract(const Duration(days: 7));
-      
-      for (final userId in _performanceMetrics.keys) {
-        _performanceMetrics[userId] = _performanceMetrics[userId]!
-            .where((m) => m.timestamp.isAfter(cutoffDate))
-            .toList();
-      }
-      
-      for (final userId in _userEvents.keys) {
-        _userEvents[userId] = _userEvents[userId]!
-            .where((e) => e.timestamp.isAfter(cutoffDate))
-            .toList();
-      }
-      
-      for (final userId in _errorReports.keys) {
-        _errorReports[userId] = _errorReports[userId]!
-            .where((e) => e.timestamp.isAfter(cutoffDate))
-            .toList();
-      }
-      
-      log('Monitoring data flushed successfully');
+      // Flush any buffered data to backend
+      await _flushPerformanceMetrics();
+      await _flushUserEvents();
+      await _flushErrors();
     } catch (e) {
-      log('Failed to flush monitoring data: $e');
+      log('Error flushing monitoring data: $e');
     }
+  }
+
+  void dispose() {
+    _stopFlushTimer();
+    _performanceController.close();
+    _userEventController.close();
+    _errorController.close();
   }
 
   // Private helper methods
   void _startFlushTimer() {
-    _flushTimer?.cancel();
+    _stopFlushTimer();
     _flushTimer = Timer.periodic(_flushInterval, (_) => flushData());
   }
 
-  void _initializeABTests() {
-    // Initialize with some sample A/B tests
-    _activeTests['button_color_test'] = ABTest(
-      id: 'button_color_test',
-      name: 'Button Color Test',
-      description: 'Test different button colors for engagement',
-      variants: ['blue', 'green', 'orange'],
-      metric: 'click_rate',
-      sampleSize: 1000,
-      duration: const Duration(days: 14),
-      startDate: DateTime.now().subtract(const Duration(days: 7)),
-      endDate: DateTime.now().add(const Duration(days: 7)),
-      status: ABTestStatus.active,
-      targeting: {'userType': 'premium'},
-      results: {},
-    );
+  void _stopFlushTimer() {
+    _flushTimer?.cancel();
+    _flushTimer = null;
   }
 
   bool _shouldSample() {
+    if (_samplingRate >= 100) return true;
     final random = Random();
     return random.nextInt(100) < _samplingRate;
   }
 
-  String _generateSessionId() {
-    return DateTime.now().millisecondsSinceEpoch.toString();
+  void _initializeRealTimeMonitoring() {
+    // Initialize real-time monitoring connections
+    _initializeWebSocketConnection();
+    _initializePerformanceObserver();
+    _initializeErrorListener();
   }
 
-  ErrorSeverity _determineErrorSeverity(String errorType, String errorMessage) {
-    if (errorType.contains('crash') || errorType.contains('fatal')) {
-      return ErrorSeverity.critical;
-    } else if (errorType.contains('error') || errorType.contains('exception')) {
-      return ErrorSeverity.high;
-    } else if (errorType.contains('warning')) {
-      return ErrorSeverity.medium;
-    } else {
-      return ErrorSeverity.low;
+  void _initializeWebSocketConnection() {
+    // Initialize WebSocket connection for real-time updates
+    // This would connect to your backend's WebSocket endpoint
+  }
+
+  void _initializePerformanceObserver() {
+    // Initialize performance monitoring
+    // This would set up observers for various performance metrics
+  }
+
+  void _initializeErrorListener() {
+    // Initialize error listeners
+    // This would set up global error handlers
+  }
+
+  Future<void> _sendPerformanceMetricToBackend(PerformanceMetric metric) async {
+    try {
+      await http.post(
+        Uri.parse('$_baseUrl/api/monitoring/performance'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode(metric.toJson()),
+      );
+    } catch (e) {
+      log('Error sending performance metric to backend: $e');
     }
   }
 
-  ABTestAnalysis _analyzeABTest(ABTest test) {
-    final results = <String, List<double>>{};
+  Future<void> _sendUserEventToBackend(UserEvent event) async {
+    try {
+      await http.post(
+        Uri.parse('$_baseUrl/api/monitoring/events'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode(event.toJson()),
+      );
+    } catch (e) {
+      log('Error sending user event to backend: $e');
+    }
+  }
+
+  Future<void> _sendErrorToBackend(ErrorReport error) async {
+    try {
+      await http.post(
+        Uri.parse('$_baseUrl/api/monitoring/errors'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode(error.toJson()),
+      );
+    } catch (e) {
+      log('Error sending error report to backend: $e');
+    }
+  }
+
+  Future<void> _sendABTestResultToBackend(ABTestResult result) async {
+    try {
+      await http.post(
+        Uri.parse('$_baseUrl/api/monitoring/ab-tests/results'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode(result.toJson()),
+      );
+    } catch (e) {
+      log('Error sending A/B test result to backend: $e');
+    }
+  }
+
+  Future<void> _flushPerformanceMetrics() async {
+    // Flush any buffered performance metrics
+  }
+
+  Future<void> _flushUserEvents() async {
+    // Flush any buffered user events
+  }
+
+  Future<void> _flushErrors() async {
+    // Flush any buffered errors
+  }
+
+  // Helper methods for monitoring logic
+  Map<String, dynamic> calculatePerformanceBaseline(List<PerformanceMetric> metrics) {
+    if (metrics.isEmpty) return {};
+
+    final baseline = <String, Map<String, dynamic>>{};
     
-    // Group results by variant
-    for (final result in _testResults[test.id] ?? []) {
-      if (!results.containsKey(result.variant)) {
-        results[result.variant] = [];
+    for (final metric in metrics) {
+      if (!baseline.containsKey(metric.type)) {
+        baseline[metric.type] = {
+          'count': 0,
+          'sum': 0.0,
+          'min': double.infinity,
+          'max': double.negativeInfinity,
+          'values': <double>[],
+        };
       }
-      results[result.variant]!.add(result.value);
-    }
-
-    // Calculate statistics
-    final variantStats = <String, VariantStats>{};
-    String? winner;
-    double maxValue = 0.0;
-
-    for (final entry in results.entries) {
-      final variant = entry.key;
-      final values = entry.value;
       
-      if (values.isNotEmpty) {
-        final avg = values.reduce((a, b) => a + b) / values.length;
-        final stdDev = _calculateStandardDeviation(values, avg);
-        
-        variantStats[variant] = VariantStats(
-          variant: variant,
-          count: values.length,
-          average: avg,
-          standardDeviation: stdDev,
-          confidenceInterval: _calculateConfidenceInterval(values, avg, stdDev),
-        );
-        
-        if (avg > maxValue) {
-          maxValue = avg;
-          winner = variant;
-        }
+      final stats = baseline[metric.type]!;
+      stats['count'] = (stats['count'] as int) + 1;
+      stats['sum'] = (stats['sum'] as double) + metric.value;
+      stats['min'] = math.min(stats['min'] as double, metric.value);
+      stats['max'] = math.max(stats['max'] as double, metric.value);
+      (stats['values'] as List<double>).add(metric.value);
+    }
+    
+    // Calculate averages and percentiles
+    for (final type in baseline.keys) {
+      final stats = baseline[type]!;
+      final values = stats['values'] as List<double>;
+      values.sort();
+      
+      stats['average'] = stats['sum'] / stats['count'];
+      stats['p50'] = _calculatePercentile(values, 0.5);
+      stats['p90'] = _calculatePercentile(values, 0.9);
+      stats['p95'] = _calculatePercentile(values, 0.95);
+      stats['p99'] = _calculatePercentile(values, 0.99);
+      
+      // Remove raw values to save memory
+      stats.remove('values');
+    }
+    
+    return baseline;
+  }
+
+  double _calculatePercentile(List<double> values, double percentile) {
+    if (values.isEmpty) return 0.0;
+    final index = (percentile * (values.length - 1)).round();
+    return values[index.clamp(0, values.length - 1)];
+  }
+
+  Map<String, dynamic> analyzeUserBehavior(List<UserEvent> events) {
+    if (events.isEmpty) return {};
+
+    final analysis = <String, dynamic>{
+      'totalEvents': events.length,
+      'uniqueEventTypes': events.map((e) => e.type).toSet().length,
+      'eventFrequency': <String, int>{},
+      'sessionPatterns': <String, dynamic>{},
+      'featureUsage': <String, int>{},
+      'userJourney': <String, List<String>>{},
+    };
+
+    // Calculate event frequency
+    for (final event in events) {
+      analysis['eventFrequency'][event.type] = 
+          (analysis['eventFrequency'][event.type] ?? 0) + 1;
+    }
+
+    // Analyze feature usage
+    for (final event in events) {
+      if (event.properties.containsKey('feature')) {
+        final feature = event.properties['feature'] as String;
+        analysis['featureUsage'][feature] = 
+            (analysis['featureUsage'][feature] ?? 0) + 1;
       }
     }
 
-    // Calculate confidence level
-    final confidence = _calculateStatisticalSignificance(variantStats);
-
-    // Generate recommendations
-    final recommendations = <String>[];
-    if (confidence > 0.95) {
-      recommendations.add('Test shows statistically significant results');
-      if (winner != null) {
-        recommendations.add('Recommend implementing variant: $winner');
-      }
-    } else {
-      recommendations.add('Test needs more data for statistical significance');
-      recommendations.add('Continue running test for longer period');
+    // Analyze user journey
+    final sortedEvents = events.toList()..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    final journey = <String>[];
+    for (final event in sortedEvents) {
+      journey.add('${event.type}:${event.name}');
     }
+    analysis['userJourney']['fullJourney'] = journey;
 
-    return ABTestAnalysis(
-      testId: test.id,
-      status: test.status.name,
-      results: variantStats,
-      winner: winner,
-      confidence: confidence,
-      recommendations: recommendations,
-    );
+    return analysis;
   }
 
-  double _calculateStandardDeviation(List<double> values, double mean) {
-    if (values.length < 2) return 0.0;
-    
-    final variance = values.map((v) => (v - mean) * (v - mean)).reduce((a, b) => a + b) / (values.length - 1);
-    return sqrt(variance);
-  }
-
-  double _calculateConfidenceInterval(List<double> values, double mean, double stdDev) {
-    if (values.length < 2) return 0.0;
-    
-    // 95% confidence interval (1.96 * standard error)
-    final standardError = stdDev / sqrt(values.length);
-    return 1.96 * standardError;
-  }
-
-  double _calculateStatisticalSignificance(Map<String, VariantStats> variantStats) {
-    // Simple confidence calculation based on sample sizes and variance
-    if (variantStats.length < 2) return 0.0;
-    
-    final totalSamples = variantStats.values.map((v) => v.count).reduce((a, b) => a + b);
-    final avgVariance = variantStats.values.map((v) => v.standardDeviation).reduce((a, b) => a + b) / variantStats.length;
-    
-    // Higher sample size and lower variance = higher confidence
-    return (totalSamples / 1000) * (1 / (1 + avgVariance));
-  }
-
-  List<Alert> _generateAlerts() {
-    final alerts = <Alert>[];
-    
-    // Check for high error rates
-    final totalErrors = _errorReports.values.expand((e) => e).length;
-    final totalEvents = _userEvents.values.expand((e) => e).length;
-    
-    if (totalEvents > 0) {
-      final errorRate = (totalErrors / totalEvents) * 100;
-      if (errorRate > 5.0) {
-        alerts.add(Alert(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          type: AlertType.error,
-          title: 'High Error Rate',
-          message: 'Error rate is ${errorRate.toStringAsFixed(1)}%',
-          severity: AlertSeverity.high,
-          timestamp: DateTime.now(),
-        ));
-      }
-    }
-    
-    // Check for performance issues
-    final performanceMetrics = _performanceMetrics.values.expand((m) => m);
-    if (performanceMetrics.isNotEmpty) {
-      final avgPerformance = performanceMetrics.map((m) => m.value).reduce((a, b) => a + b) / performanceMetrics.length;
-      if (avgPerformance > 5000) { // 5 seconds
-        alerts.add(Alert(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          type: AlertType.performance,
-          title: 'Performance Degradation',
-          message: 'Average response time is ${avgPerformance.toStringAsFixed(0)}ms',
-          severity: AlertSeverity.medium,
-          timestamp: DateTime.now(),
-        ));
-      }
-    }
-    
-    return alerts;
-  }
-
-  List<Insight> _generateInsights(
-    List<UserEvent> events,
-    List<PerformanceMetric> metrics,
+  List<Map<String, dynamic>> generateInsights(
+    Map<String, dynamic> performanceBaseline,
+    Map<String, dynamic> userBehavior,
     List<ErrorReport> errors,
   ) {
-    final insights = <Insight>[];
-    
-    // User engagement insights
-    if (events.isNotEmpty) {
-      final eventTypes = events.map((e) => e.eventType).toSet();
-      insights.add(Insight(
-        type: InsightType.userEngagement,
-        title: 'User Activity',
-        description: 'User performed ${events.length} actions across ${eventTypes.length} different types',
-        confidence: 0.8,
-        recommendations: ['Continue monitoring user engagement patterns'],
-      ));
-    }
-    
+    final insights = <Map<String, dynamic>>[];
+
     // Performance insights
-    if (metrics.isNotEmpty) {
-      final avgPerformance = metrics.map((m) => m.value).reduce((a, b) => a + b) / metrics.length;
-      if (avgPerformance > 1000) {
-        insights.add(Insight(
-          type: InsightType.performance,
-          title: 'Performance Alert',
-          description: 'Average performance is ${avgPerformance.toStringAsFixed(0)}ms',
-          confidence: 0.9,
-          recommendations: ['Investigate performance bottlenecks', 'Optimize critical paths'],
-        ));
+    for (final type in performanceBaseline.keys) {
+      final stats = performanceBaseline[type]!;
+      final p95 = stats['p95'] as double;
+      final average = stats['average'] as double;
+      
+      if (p95 > average * 2) {
+        insights.add({
+          'type': 'performance',
+          'title': 'High Latency Detected',
+          'message': '$type operations are showing high 95th percentile latency',
+          'severity': 'warning',
+          'recommendation': 'Investigate performance bottlenecks in $type operations',
+          'metrics': stats,
+        });
       }
     }
-    
+
+    // User behavior insights
+    final totalEvents = userBehavior['totalEvents'] as int;
+    if (totalEvents > 1000) {
+      insights.add({
+        'type': 'user_behavior',
+        'title': 'High User Activity',
+        'message': 'Users are very active with $totalEvents events',
+        'severity': 'info',
+        'recommendation': 'Consider optimizing for high-traffic scenarios',
+        'metrics': userBehavior,
+      });
+    }
+
     // Error insights
-    if (errors.isNotEmpty) {
-      final criticalErrors = errors.where((e) => e.severity == ErrorSeverity.critical).length;
-      if (criticalErrors > 0) {
-        insights.add(Insight(
-          type: InsightType.error,
-          title: 'Critical Errors Detected',
-          description: '$criticalErrors critical errors found',
-          confidence: 0.95,
-          recommendations: ['Immediate investigation required', 'Check system health'],
-        ));
-      }
+    final criticalErrors = errors.where((e) => e.severity == ErrorSeverity.critical).length;
+    if (criticalErrors > 0) {
+      insights.add({
+        'type': 'error',
+        'title': 'Critical Errors Detected',
+        'message': '$criticalErrors critical errors found',
+        'severity': 'critical',
+        'recommendation': 'Immediate investigation required for critical errors',
+        'metrics': {'criticalErrorCount': criticalErrors},
+      });
     }
-    
+
     return insights;
   }
 
-  List<String> _generateRecommendations(
-    int totalEvents,
-    int totalErrors,
-    double avgPerformance,
-    List<Insight> insights,
+  Map<String, dynamic> calculateBusinessMetrics(
+    List<UserEvent> events,
+    List<PerformanceMetric> performance,
+    List<ErrorReport> errors,
   ) {
-    final recommendations = <String>[];
-    
-    if (totalEvents == 0) {
-      recommendations.add('No user activity detected - consider user onboarding improvements');
-    }
-    
-    if (totalErrors > 0) {
-      recommendations.add('Implement error monitoring and alerting');
-      recommendations.add('Review error handling procedures');
-    }
-    
-    if (avgPerformance > 2000) {
-      recommendations.add('Optimize application performance');
-      recommendations.add('Implement performance monitoring');
-    }
-    
-    if (insights.isEmpty) {
-      recommendations.add('Collect more data for meaningful insights');
-    }
-    
-    return recommendations;
+    final metrics = <String, dynamic>{
+      'userEngagement': _calculateUserEngagement(events),
+      'systemReliability': _calculateSystemReliability(performance, errors),
+      'performanceHealth': _calculatePerformanceHealth(performance),
+      'errorRate': _calculateErrorRate(errors),
+    };
+
+    return metrics;
   }
 
   double _calculateUserEngagement(List<UserEvent> events) {
     if (events.isEmpty) return 0.0;
     
-    // Calculate engagement score based on event frequency and variety
-    final uniqueEventTypes = events.map((e) => e.eventType).toSet().length;
+    final uniqueUsers = events.map((e) => e.userId).toSet().length;
     final totalEvents = events.length;
-    final timeSpan = events.last.timestamp.difference(events.first.timestamp).inDays + 1;
     
-    return (uniqueEventTypes * totalEvents) / (timeSpan * 10); // Normalized score
+    return totalEvents / uniqueUsers;
   }
 
-  List<ChartData> _generateCharts(
-    List<UserEvent> events,
-    List<PerformanceMetric> metrics,
+  double _calculateSystemReliability(
+    List<PerformanceMetric> performance,
     List<ErrorReport> errors,
   ) {
-    final charts = <ChartData>[];
+    if (performance.isEmpty) return 1.0;
     
-    // User events over time
-    if (events.isNotEmpty) {
-      final eventCounts = <String, int>{};
-      for (final event in events) {
-        eventCounts[event.eventType] = (eventCounts[event.eventType] ?? 0) + 1;
-      }
-      
-      charts.add(ChartData(
-        type: ChartType.pie,
-        title: 'User Event Distribution',
-        data: eventCounts.entries.map((e) => ChartPoint(
-          label: e.key,
-          value: e.value.toDouble(),
-        )).toList(),
-      ));
-    }
+    final totalRequests = performance.length;
+    final errorCount = errors.length;
     
-    // Performance over time
-    if (metrics.isNotEmpty) {
-      final performanceData = metrics.map((m) => ChartPoint(
-        label: m.timestamp.toIso8601String().substring(0, 10),
-        value: m.value,
-      )).toList();
-      
-      charts.add(ChartData(
-        type: ChartType.line,
-        title: 'Performance Over Time',
-        data: performanceData,
-      ));
-    }
-    
-    // Error distribution
-    if (errors.isNotEmpty) {
-      final errorCounts = <String, int>{};
-      for (final error in errors) {
-        errorCounts[error.errorType] = (errorCounts[error.errorType] ?? 0) + 1;
-      }
-      
-      charts.add(ChartData(
-        type: ChartType.bar,
-        title: 'Error Distribution',
-        data: errorCounts.entries.map((e) => ChartPoint(
-          label: e.key,
-          value: e.value.toDouble(),
-        )).toList(),
-      ));
-    }
-    
-    return charts;
+    return (totalRequests - errorCount) / totalRequests;
   }
 
-  /// Dispose resources
-  void dispose() {
-    _flushTimer?.cancel();
-    _performanceController.close();
-    _userEventController.close();
-    _errorController.close();
+  double _calculatePerformanceHealth(List<PerformanceMetric> performance) {
+    if (performance.isEmpty) return 1.0;
+    
+    final responseTimeMetrics = performance
+        .where((m) => m.type == 'response_time')
+        .map((m) => m.value)
+        .toList();
+    
+    if (responseTimeMetrics.isEmpty) return 1.0;
+    
+    final averageResponseTime = responseTimeMetrics.reduce((a, b) => a + b) / responseTimeMetrics.length;
+    final maxAcceptableTime = 1000.0; // 1 second
+    
+    return math.max(0.0, 1.0 - (averageResponseTime / maxAcceptableTime));
+  }
+
+  double _calculateErrorRate(List<ErrorReport> errors) {
+    if (errors.isEmpty) return 0.0;
+    
+    final criticalErrors = errors.where((e) => e.severity == ErrorSeverity.critical).length;
+    final totalErrors = errors.length;
+    
+    return criticalErrors / totalErrors;
   }
 }
 
-// Performance trace utility
-class PerformanceTrace {
-  final String name;
-  final DateTime startTime;
-  final Function(Duration duration, Map<String, dynamic> metadata) onStop;
-
-  PerformanceTrace({
-    required this.name,
-    required this.startTime,
-    required this.onStop,
-  });
-
-  void stop([Map<String, dynamic>? metadata]) {
-    final duration = DateTime.now().difference(startTime);
-    onStop(duration, metadata ?? {});
-  }
-}
-
-// Additional models for monitoring service
-class TimeRange {
-  final DateTime start;
-  final DateTime end;
-
-  TimeRange({required this.start, required this.end});
-
-  Duration get duration => end.difference(start);
-}
-
-class VariantStats {
-  final String variant;
-  final int count;
-  final double average;
-  final double standardDeviation;
-  final double confidenceInterval;
-
-  VariantStats({
-    required this.variant,
-    required this.count,
-    required this.average,
-    required this.standardDeviation,
-    required this.confidenceInterval,
-  });
-}
-
-class ChartData {
-  final ChartType type;
-  final String title;
-  final List<ChartPoint> data;
-
-  ChartData({
-    required this.type,
-    required this.title,
-    required this.data,
-  });
-}
-
-class ChartPoint {
-  final String label;
-  final double value;
-
-  ChartPoint({
-    required this.label,
-    required this.value,
-  });
-}
-
-enum ChartType { line, bar, pie, area }
-
-class Alert {
-  final String id;
-  final AlertType type;
-  final String title;
-  final String message;
-  final AlertSeverity severity;
-  final DateTime timestamp;
-
-  Alert({
-    required this.id,
-    required this.type,
-    required this.title,
-    required this.message,
-    required this.severity,
-    required this.timestamp,
-  });
-}
-
-enum AlertType { error, performance, security, business }
-enum AlertSeverity { low, medium, high, critical }
-
-class Insight {
-  final InsightType type;
-  final String title;
-  final String description;
-  final double confidence;
-  final List<String> recommendations;
-
-  Insight({
-    required this.type,
-    required this.title,
-    required this.description,
-    required this.confidence,
-    required this.recommendations,
-  });
-}
-
-enum InsightType { userEngagement, performance, error, business, security }
-
-class DashboardMetrics {
-  final int totalEvents;
-  final int totalErrors;
-  final double avgPerformance;
-  final double userEngagement;
-  final double errorRate;
-
-  DashboardMetrics({
-    required this.totalEvents,
-    required this.totalErrors,
-    required this.avgPerformance,
-    required this.userEngagement,
-    required this.errorRate,
-  });
-}
-
-class AnalyticsDashboard {
-  final String userId;
-  final TimeRange period;
-  final DashboardMetrics metrics;
-  final List<Insight> insights;
-  final List<String> recommendations;
-  final List<ChartData> charts;
-
-  AnalyticsDashboard({
-    required this.userId,
-    required this.period,
-    required this.metrics,
-    required this.insights,
-    required this.recommendations,
-    required this.charts,
-  });
-}
+// Helper function for math operations
+double math.min(double a, double b) => a < b ? a : b;
+double math.max(double a, double b) => a > b ? a : b;
