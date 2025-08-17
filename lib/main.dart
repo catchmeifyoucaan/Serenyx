@@ -20,11 +20,27 @@ import 'features/premium/presentation/screens/premium_features_screen.dart';
 import 'features/community/presentation/screens/community_screen.dart';
 import 'features/community/presentation/screens/marketplace_screen.dart';
 import 'features/ai_ml/presentation/screens/ai_insights_screen.dart';
+import 'features/veterinary_ai/presentation/screens/veterinary_ai_screen.dart';
+import 'features/behavioral_analysis/presentation/screens/behavioral_analysis_screen.dart';
+import 'features/training_tracking/presentation/screens/training_tracking_screen.dart';
+import 'features/social_network/presentation/screens/social_network_screen.dart';
+import 'features/gamification/presentation/screens/gamification_screen.dart';
+import 'features/subscription/presentation/screens/subscription_screen.dart';
+import 'features/monitoring/presentation/screens/monitoring_screen.dart';
 import 'shared/services/auth_service.dart';
 import 'shared/services/pet_service.dart';
 import 'shared/services/session_service.dart';
+import 'shared/services/advanced_ai_service.dart';
+import 'shared/services/social_network_service.dart';
+import 'shared/services/gamification_service.dart';
+import 'shared/services/subscription_service.dart';
+import 'shared/services/monitoring_service.dart';
 import 'shared/models/pet.dart';
 import 'shared/models/session.dart';
+import 'shared/models/auth_models.dart';
+import 'shared/models/social_models.dart';
+import 'shared/models/subscription_models.dart';
+import 'shared/models/analytics_models.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -112,6 +128,11 @@ class SerenyxApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => PetService()),
         ChangeNotifierProvider(create: (_) => SessionService()),
+        ChangeNotifierProvider(create: (_) => AdvancedAIService()),
+        ChangeNotifierProvider(create: (_) => SocialNetworkService()),
+        ChangeNotifierProvider(create: (_) => GamificationService()),
+        ChangeNotifierProvider(create: (_) => SubscriptionService()),
+        ChangeNotifierProvider(create: (_) => MonitoringService()),
       ],
       child: MaterialApp(
         title: AppConstants.appName,
@@ -144,6 +165,13 @@ class SerenyxApp extends StatelessWidget {
           '/community': (context) => const CommunityScreen(),
           '/marketplace': (context) => const MarketplaceScreen(),
           '/ai-insights': (context) => const AIInsightsScreen(),
+          '/veterinary-ai': (context) => const VeterinaryAIScreen(),
+          '/behavioral-analysis': (context) => const BehavioralAnalysisScreen(),
+          '/training-tracking': (context) => const TrainingTrackingScreen(),
+          '/social-network': (context) => const SocialNetworkScreen(),
+          '/gamification': (context) => const GamificationScreen(),
+          '/subscription': (context) => const SubscriptionScreen(),
+          '/monitoring': (context) => const MonitoringScreen(),
         },
       ),
     );
