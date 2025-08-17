@@ -44,6 +44,67 @@ void main() async {
 class SerenyxApp extends StatelessWidget {
   const SerenyxApp({super.key});
 
+  /// Helper method to create a default user for testing
+  User _getDefaultUser() {
+    return User(
+      id: 'demo-user',
+      email: 'demo@serenyx.com',
+      createdAt: DateTime.now(),
+      lastSignInAt: DateTime.now(),
+      emailVerified: true,
+      pets: [],
+      profile: UserProfile(
+        firstName: 'Demo',
+        lastName: 'User',
+        interests: ['Pet Care', 'Mindfulness'],
+      ),
+      preferences: UserPreferences(
+        notifications: NotificationSettings(
+          pushEnabled: true,
+          emailEnabled: false,
+          smsEnabled: false,
+          enabledTypes: ['health_reminders', 'vet_appointments'],
+          quietHours: TimeRange(
+            start: const TimeOfDay(hour: 22, minute: 0),
+            end: const TimeOfDay(hour: 7, minute: 0),
+          ),
+        ),
+        privacy: PrivacySettings(
+          profilePublic: false,
+          petsPublic: false,
+          healthDataShared: false,
+          trustedContacts: [],
+          analyticsEnabled: true,
+        ),
+        aiPreferences: AIPreferences(
+          preferredModel: 'gpt-5',
+          enabledFeatures: ['emotion_recognition', 'behavioral_prediction'],
+          autoAnalysis: true,
+          personalizedRecommendations: true,
+          modelSettings: {},
+        ),
+        theme: ThemeSettings(
+          themeMode: 'system',
+          colorScheme: 'default',
+          useSystemTheme: true,
+        ),
+        language: LanguageSettings(
+          language: 'en',
+          region: 'US',
+          autoDetect: true,
+        ),
+      ),
+      subscription: SubscriptionInfo(
+        plan: 'free',
+        startDate: DateTime.now(),
+        isActive: true,
+        features: ['basic_tracking', 'ai_insights'],
+        monthlyPrice: 0.0,
+        billingCycle: 'monthly',
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -62,7 +123,7 @@ class SerenyxApp extends StatelessWidget {
         routes: {
           '/login': (context) => const LoginScreen(),
           '/onboarding': (context) => const OnboardingScreen(),
-          '/home': (context) => const HomeScreen(),
+          '/home': (context) => HomeScreen(user: _getDefaultUser()),
           '/tickle-session': (context) => const TickleSessionScreen(
             petId: 'demo-pet',
             petName: 'Buddy',
