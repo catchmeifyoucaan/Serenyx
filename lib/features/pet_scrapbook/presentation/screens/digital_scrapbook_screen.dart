@@ -10,6 +10,7 @@ import '../widgets/memory_card.dart';
 import '../widgets/milestone_card.dart';
 import '../widgets/photo_memory.dart';
 import '../widgets/timeline_widget.dart';
+import 'dart:io';
 
 class DigitalScrapbookScreen extends StatefulWidget {
   final Pet pet;

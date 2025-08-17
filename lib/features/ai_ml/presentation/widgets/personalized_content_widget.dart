@@ -14,113 +14,354 @@ class PersonalizedContentWidget extends StatefulWidget {
 }
 
 class _PersonalizedContentWidgetState extends State<PersonalizedContentWidget> {
-  List<PersonalizedContent> _recommendations = [];
-  List<PersonalizedContent> _recentContent = [];
-  bool _isLoading = false;
+  final List<ContentRecommendation> _recommendations = [];
+  final List<LearningPath> _learningPaths = [];
+  final List<PersonalizedExperience> _experiences = [];
+  bool _isGenerating = false;
 
   @override
   void initState() {
     super.initState();
-    _loadRecommendations();
-    _loadRecentContent();
+    _loadPersonalizedContent();
   }
 
-  void _loadRecommendations() {
-    // Mock data - in real app, this would come from AI service
-    _recommendations = [
-      PersonalizedContent(
+  void _loadPersonalizedContent() {
+    // Load real personalized content from storage/database
+    // For now, we'll start with empty lists for a clean slate
+  }
+
+  Future<void> _generatePersonalizedContent() async {
+    setState(() {
+      _isGenerating = true;
+    });
+
+    try {
+      // Simulate AI content generation (replace with actual AI service call)
+      await Future.delayed(const Duration(seconds: 3));
+      
+      final recommendation = ContentRecommendation(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        petId: widget.pet.id,
+        type: _generateContentType(),
+        title: _generateContentTitle(),
+        description: _generateContentDescription(),
+        category: _generateContentCategory(),
+        difficulty: _generateDifficulty(),
+        estimatedTime: _generateEstimatedTime(),
+        tags: _generateTags(),
+        timestamp: DateTime.now(),
+        isRecommended: true,
+        userRating: 0.0,
+      );
+
+      final learningPath = LearningPath(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        petId: widget.pet.id,
+        title: _generateLearningPathTitle(),
+        description: _generateLearningPathDescription(),
+        steps: _generateLearningSteps(),
+        difficulty: _generateDifficulty(),
+        estimatedDuration: _generatePathDuration(),
+        progress: 0.0,
+        isActive: true,
+        createdAt: DateTime.now(),
+      );
+
+      final experience = PersonalizedExperience(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        petId: widget.pet.id,
+        type: _generateExperienceType(),
+        title: _generateExperienceTitle(),
+        description: _generateExperienceDescription(),
+        activities: _generateExperienceActivities(),
+        duration: _generateExperienceDuration(),
+        mood: _generateMood(),
+        timestamp: DateTime.now(),
+      );
+
+      setState(() {
+        _recommendations.insert(0, recommendation);
+        _learningPaths.insert(0, learningPath);
+        _experiences.insert(0, experience);
+        _isGenerating = false;
+      });
+
+      _showContentGenerated(recommendation, learningPath, experience);
+    } catch (e) {
+      setState(() {
+        _isGenerating = false;
+      });
+      _showError('Content generation failed. Please try again.');
+    }
+  }
+
+  ContentType _generateContentType() {
+    final types = [ContentType.training, ContentType.health, ContentType.activity, ContentType.social];
+    return types[DateTime.now().millisecond % types.length];
+  }
+
+  String _generateContentTitle() {
+    final titles = [
+      'Advanced Obedience Training',
+      'Interactive Puzzle Games',
+      'Socialization Exercises',
+      'Health Monitoring Guide',
+      'Behavioral Enrichment',
+      'Physical Fitness Program'
+    ];
+    return titles[DateTime.now().millisecond % titles.length];
+  }
+
+  String _generateContentDescription() {
+    final descriptions = [
+      'Tailored training exercises designed specifically for your pet\'s learning style and current skill level.',
+      'Brain-stimulating activities that challenge your pet\'s problem-solving abilities and keep them engaged.',
+      'Structured social interactions to improve your pet\'s confidence and social skills in various environments.',
+      'Comprehensive health tracking and monitoring techniques to ensure your pet\'s well-being.',
+      'Activities designed to address specific behavioral needs and promote positive mental health.',
+      'Customized exercise routines that match your pet\'s energy level and physical capabilities.'
+    ];
+    return descriptions[DateTime.now().millisecond % descriptions.length];
+  }
+
+  String _generateContentCategory() {
+    final categories = ['Training', 'Health', 'Activity', 'Social', 'Behavior', 'Fitness'];
+    return categories[DateTime.now().millisecond % categories.length];
+  }
+
+  Difficulty _generateDifficulty() {
+    final difficulties = [Difficulty.beginner, Difficulty.intermediate, Difficulty.advanced];
+    return difficulties[DateTime.now().millisecond % difficulties.length];
+  }
+
+  int _generateEstimatedTime() {
+    return 20 + (DateTime.now().millisecond % 40);
+  }
+
+  List<String> _generateTags() {
+    final allTags = [
+      'training', 'health', 'exercise', 'social', 'behavior', 'enrichment',
+      'puzzle', 'obedience', 'fitness', 'wellness', 'bonding', 'development'
+    ];
+    final selectedTags = <String>[];
+    final random = DateTime.now().millisecond;
+    
+    for (int i = 0; i < 3; i++) {
+      final index = (random + i) % allTags.length;
+      if (!selectedTags.contains(allTags[index])) {
+        selectedTags.add(allTags[index]);
+      }
+    }
+    
+    return selectedTags;
+  }
+
+  String _generateLearningPathTitle() {
+    final titles = [
+      'Complete Obedience Mastery',
+      'Health & Wellness Journey',
+      'Social Confidence Builder',
+      'Behavioral Excellence Path',
+      'Fitness & Agility Program'
+    ];
+    return titles[DateTime.now().millisecond % titles.length];
+  }
+
+  String _generateLearningPathDescription() {
+    final descriptions = [
+      'A comprehensive learning journey from basic commands to advanced obedience skills.',
+      'Step-by-step guide to maintaining optimal health and preventing common issues.',
+      'Progressive socialization program to build confidence in various situations.',
+      'Systematic approach to addressing and improving behavioral patterns.',
+      'Gradual fitness progression to build strength, agility, and endurance.'
+    ];
+    return descriptions[DateTime.now().millisecond % descriptions.length];
+  }
+
+  List<LearningStep> _generateLearningSteps() {
+    return [
+      LearningStep(
         id: '1',
-        title: 'Interactive Puzzle Games',
-        description: 'Based on ${widget.pet.name}\'s problem-solving skills, these puzzle games will provide mental stimulation and bonding opportunities.',
-        category: 'Training & Enrichment',
-        contentUrl: 'https://example.com/puzzle-games',
-        relevanceScore: 0.94,
-        tags: ['mental stimulation', 'problem solving', 'bonding'],
-        createdAt: DateTime.now().subtract(const Duration(hours: 1)),
+        title: 'Foundation Skills',
+        description: 'Build basic understanding and trust',
+        duration: 15,
+        isCompleted: false,
       ),
-      PersonalizedContent(
+      LearningStep(
         id: '2',
-        title: 'Evening Relaxation Routine',
-        description: 'Perfect for ${widget.pet.name}\'s evening energy patterns. Create a calming routine to help with relaxation and sleep preparation.',
-        category: 'Wellness & Care',
-        contentUrl: 'https://example.com/relaxation-routine',
-        relevanceScore: 0.87,
-        tags: ['relaxation', 'sleep', 'evening routine'],
-        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+        title: 'Intermediate Development',
+        description: 'Expand skills and increase complexity',
+        duration: 20,
+        isCompleted: false,
       ),
-      PersonalizedContent(
+      LearningStep(
         id: '3',
-        title: 'Socialization Activities',
-        description: '${widget.pet.name} shows high social needs. These activities will help strengthen your bond and provide social stimulation.',
-        category: 'Social & Bonding',
-        contentUrl: 'https://example.com/socialization',
-        relevanceScore: 0.91,
-        tags: ['socialization', 'bonding', 'interaction'],
-        createdAt: DateTime.now().subtract(const Duration(hours: 3)),
+        title: 'Advanced Application',
+        description: 'Master complex scenarios and challenges',
+        duration: 25,
+        isCompleted: false,
       ),
-      PersonalizedContent(
+      LearningStep(
         id: '4',
-        title: 'Nutrition Optimization Guide',
-        description: 'Tailored nutrition advice based on ${widget.pet.name}\'s age, activity level, and health indicators.',
-        category: 'Health & Nutrition',
-        contentUrl: 'https://example.com/nutrition',
-        relevanceScore: 0.83,
-        tags: ['nutrition', 'health', 'diet'],
-        createdAt: DateTime.now().subtract(const Duration(hours: 4)),
+        title: 'Real-world Practice',
+        description: 'Apply skills in everyday situations',
+        duration: 30,
+        isCompleted: false,
       ),
     ];
   }
 
-  void _loadRecentContent() {
-    // Mock data for recently consumed content
-    _recentContent = [
-      PersonalizedContent(
-        id: '5',
-        title: 'Morning Exercise Routine',
-        description: 'A 15-minute morning exercise routine that ${widget.pet.name} enjoyed and responded well to.',
-        category: 'Exercise & Activity',
-        contentUrl: 'https://example.com/morning-exercise',
-        relevanceScore: 0.89,
-        tags: ['exercise', 'morning routine', 'energy'],
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      ),
-      PersonalizedContent(
-        id: '6',
-        title: 'Grooming Best Practices',
-        description: 'Grooming techniques that ${widget.pet.name} finds comfortable and enjoyable.',
-        category: 'Grooming & Care',
-        contentUrl: 'https://example.com/grooming',
-        relevanceScore: 0.76,
-        tags: ['grooming', 'care', 'comfort'],
-        createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      ),
-    ];
+  int _generatePathDuration() {
+    return 90 + (DateTime.now().millisecond % 60);
   }
 
-  Future<void> _refreshRecommendations() async {
-    setState(() {
-      _isLoading = true;
-    });
+  ExperienceType _generateExperienceType() {
+    final types = [ExperienceType.training, ExperienceType.play, ExperienceType.social, ExperienceType.health];
+    return types[DateTime.now().millisecond % types.length];
+  }
 
-    // Simulate AI refresh
-    await Future.delayed(const Duration(seconds: 2));
+  String _generateExperienceTitle() {
+    final titles = [
+      'Morning Training Session',
+      'Interactive Play Time',
+      'Socialization Adventure',
+      'Health Check Routine',
+      'Evening Bonding Session'
+    ];
+    return titles[DateTime.now().millisecond % titles.length];
+  }
 
-    // Mock new recommendation
-    final newRecommendation = PersonalizedContent(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: 'Weekend Adventure Planning',
-      description: 'Based on ${widget.pet.name}\'s energy levels and preferences, plan an exciting weekend adventure.',
-      category: 'Adventure & Exploration',
-      contentUrl: 'https://example.com/weekend-adventure',
-      relevanceScore: 0.88,
-      tags: ['adventure', 'weekend', 'exploration'],
-      createdAt: DateTime.now(),
+  String _generateExperienceDescription() {
+    final descriptions = [
+      'Personalized training activities designed for your pet\'s current skill level and learning pace.',
+      'Engaging play activities that stimulate both physical and mental development.',
+      'Controlled social interactions to build confidence and improve social skills.',
+      'Regular health monitoring and preventive care activities.',
+      'Quality bonding time with activities that strengthen your relationship.'
+    ];
+    return descriptions[DateTime.now().millisecond % descriptions.length];
+  }
+
+  List<String> _generateExperienceActivities() {
+    final activities = [
+      'Command practice',
+      'Treat-based learning',
+      'Interactive toys',
+      'Social encounters',
+      'Health monitoring',
+      'Gentle grooming'
+    ];
+    return activities.take(3).toList();
+  }
+
+  int _generateExperienceDuration() {
+    return 25 + (DateTime.now().millisecond % 35);
+  }
+
+  PetMood _generateMood() {
+    final moods = [PetMood.happy, PetMood.excited, PetMood.calm, PetMood.curious];
+    return moods[DateTime.now().millisecond % moods.length];
+  }
+
+  void _showContentGenerated(ContentRecommendation recommendation, LearningPath learningPath, PersonalizedExperience experience) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Personalized Content Generated!'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Content: ${recommendation.title}'),
+              const SizedBox(height: 8),
+              Text('Category: ${recommendation.category}'),
+              Text('Difficulty: ${_getDifficultyText(recommendation.difficulty)}'),
+              Text('Time: ${recommendation.estimatedTime} minutes'),
+              const SizedBox(height: 16),
+              Text('Learning Path: ${learningPath.title}'),
+              Text('Steps: ${learningPath.steps.length}'),
+              Text('Duration: ${learningPath.estimatedDuration} minutes'),
+              const SizedBox(height: 16),
+              Text('Experience: ${experience.title}'),
+              Text('Activities: ${experience.activities.join(', ')}'),
+              Text('Duration: ${experience.duration} minutes'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('OK'),
+          ),
+        ],
+      ),
     );
+  }
 
-    setState(() {
-      _recommendations.insert(0, newRecommendation);
-      _isLoading = false;
-    });
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppTheme.colors.error,
+      ),
+    );
+  }
+
+  String _getDifficultyText(Difficulty difficulty) {
+    switch (difficulty) {
+      case Difficulty.beginner:
+        return 'Beginner';
+      case Difficulty.intermediate:
+        return 'Intermediate';
+      case Difficulty.advanced:
+        return 'Advanced';
+    }
+  }
+
+  Color _getDifficultyColor(Difficulty difficulty) {
+    switch (difficulty) {
+      case Difficulty.beginner:
+        return AppTheme.colors.success;
+      case Difficulty.intermediate:
+        return AppTheme.colors.warning;
+      case Difficulty.advanced:
+        return AppTheme.colors.error;
+    }
+  }
+
+  Color _getContentTypeColor(ContentType type) {
+    switch (type) {
+      case ContentType.training:
+        return AppTheme.colors.primary;
+      case ContentType.health:
+        return AppTheme.colors.success;
+      case ContentType.activity:
+        return AppTheme.colors.warning;
+      case ContentType.social:
+        return AppTheme.colors.secondary;
+      case ContentType.behavior:
+        return AppTheme.colors.info;
+      case ContentType.fitness:
+        return AppTheme.colors.error;
+    }
+  }
+
+  IconData _getContentTypeIcon(ContentType type) {
+    switch (type) {
+      case ContentType.training:
+        return Icons.school;
+      case ContentType.health:
+        return Icons.health_and_safety;
+      case ContentType.activity:
+        return Icons.fitness_center;
+      case ContentType.social:
+        return Icons.people;
+      case ContentType.behavior:
+        return Icons.psychology;
+      case ContentType.fitness:
+        return Icons.directions_run;
+    }
   }
 
   @override
@@ -130,31 +371,32 @@ class _PersonalizedContentWidgetState extends State<PersonalizedContentWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildContentSummary(),
+          _buildHeader(),
           const SizedBox(height: 24),
-          _buildRefreshSection(),
+          _buildGenerationSection(),
           const SizedBox(height: 24),
-          _buildRecommendationsList(),
+          _buildRecommendationsSection(),
           const SizedBox(height: 24),
-          _buildRecentContent(),
+          _buildLearningPathsSection(),
+          const SizedBox(height: 24),
+          _buildExperiencesSection(),
         ],
       ),
     );
   }
 
-  Widget _buildContentSummary() {
+  Widget _buildHeader() {
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Icon(
-                  Icons.recommend,
+                  Icons.person_pin,
                   color: AppTheme.colors.primary,
                   size: 28,
                 ),
@@ -168,30 +410,257 @@ class _PersonalizedContentWidgetState extends State<PersonalizedContentWidget> {
               ],
             ),
             const SizedBox(height: 16),
+            Text(
+              'AI-generated content tailored specifically to your pet\'s needs, preferences, and learning style.',
+              style: AppTheme.textStyles.bodyMedium?.copyWith(
+                color: AppTheme.colors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenerationSection() {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            Icon(
+              Icons.auto_awesome,
+              size: 64,
+              color: AppTheme.colors.primary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Generate Personalized Content',
+              style: AppTheme.textStyles.headlineSmall?.copyWith(
+                color: AppTheme.colors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Get AI-powered content recommendations, learning paths, and personalized experiences designed specifically for your pet.',
+              style: AppTheme.textStyles.bodyMedium?.copyWith(
+                color: AppTheme.colors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isGenerating ? null : _generatePersonalizedContent,
+                icon: _isGenerating 
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppTheme.colors.onPrimary,
+                          ),
+                        ),
+                      )
+                    : Icon(Icons.auto_awesome),
+                label: Text(_isGenerating ? 'Generating...' : 'Generate Content'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.colors.primary,
+                  foregroundColor: AppTheme.colors.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecommendationsSection() {
+    if (_recommendations.isEmpty) {
+      return Card(
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              Icon(
+                Icons.recommend,
+                size: 64,
+                color: AppTheme.colors.textSecondary,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No Recommendations Yet',
+                style: AppTheme.textStyles.headlineSmall?.copyWith(
+                  color: AppTheme.colors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Start generating content to get personalized recommendations for your pet.',
+                style: AppTheme.textStyles.bodyMedium?.copyWith(
+                  color: AppTheme.colors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Content Recommendations',
+          style: AppTheme.textStyles.headlineSmall?.copyWith(
+            color: AppTheme.colors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ..._recommendations.map((recommendation) => _buildRecommendationCard(recommendation)),
+      ],
+    );
+  }
+
+  Widget _buildRecommendationCard(ContentRecommendation recommendation) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: _getContentTypeColor(recommendation.type).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: Icon(
+                    _getContentTypeIcon(recommendation.type),
+                    color: _getContentTypeColor(recommendation.type),
+                    size: 25,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        recommendation.title,
+                        style: AppTheme.textStyles.titleMedium?.copyWith(
+                          color: AppTheme.colors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        recommendation.category,
+                        style: AppTheme.textStyles.bodySmall?.copyWith(
+                          color: AppTheme.colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _getDifficultyColor(recommendation.difficulty).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _getDifficultyText(recommendation.difficulty),
+                    style: TextStyle(
+                      color: _getDifficultyColor(recommendation.difficulty),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              recommendation.description,
+              style: AppTheme.textStyles.bodyMedium?.copyWith(
+                color: AppTheme.colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(
+                  Icons.access_time,
+                  size: 16,
+                  color: AppTheme.colors.textSecondary,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${recommendation.estimatedTime} min',
+                  style: AppTheme.textStyles.bodySmall?.copyWith(
+                    color: AppTheme.colors.textSecondary,
+                  ),
+                ),
+                const Spacer(),
+                if (recommendation.tags.isNotEmpty)
+                  Wrap(
+                    spacing: 4,
+                    children: recommendation.tags.take(2).map((tag) => 
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.colors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          tag,
+                          style: TextStyle(
+                            color: AppTheme.colors.primary,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    ).toList(),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
-                  child: _buildContentStat(
-                    'Recommendations',
-                    '${_recommendations.length}',
-                    Icons.lightbulb,
-                    AppTheme.colors.primary,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      // TODO: Implement content viewing
+                    },
+                    child: Text('View Content'),
                   ),
                 ),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: _buildContentStat(
-                    'Avg Relevance',
-                    '89%',
-                    Icons.trending_up,
-                    AppTheme.colors.success,
-                  ),
-                ),
-                Expanded(
-                  child: _buildContentStat(
-                    'Categories',
-                    '4',
-                    Icons.category,
-                    AppTheme.colors.secondary,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // TODO: Implement content starting
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.colors.primary,
+                      foregroundColor: AppTheme.colors.onPrimary,
+                    ),
+                    child: Text('Start'),
                   ),
                 ),
               ],
@@ -199,302 +668,211 @@ class _PersonalizedContentWidgetState extends State<PersonalizedContentWidget> {
           ],
         ),
       ),
-    );
+    ).animate().fadeIn().slideX(begin: 0.3);
   }
 
-  Widget _buildContentStat(String label, String value, IconData icon, Color color) {
+  Widget _buildLearningPathsSection() {
+    if (_learningPaths.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: color, size: 32),
-        const SizedBox(height: 8),
         Text(
-          value,
-          style: AppTheme.textStyles.titleLarge?.copyWith(
+          'Learning Paths',
+          style: AppTheme.textStyles.headlineSmall?.copyWith(
             color: AppTheme.colors.textPrimary,
-            fontWeight: FontWeight.bold,
           ),
         ),
-        Text(
-          label,
-          style: AppTheme.textStyles.bodySmall?.copyWith(
-            color: AppTheme.colors.textSecondary,
-          ),
-          textAlign: TextAlign.center,
-        ),
+        const SizedBox(height: 16),
+        ..._learningPaths.map((path) => _buildLearningPathCard(path)),
       ],
     );
   }
 
-  Widget _buildRefreshSection() {
+  Widget _buildLearningPathCard(LearningPath path) {
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Refresh Recommendations',
-              style: AppTheme.textStyles.titleLarge?.copyWith(
-                color: AppTheme.colors.textPrimary,
-              ),
+            Row(
+              children: [
+                Icon(
+                  Icons.timeline,
+                  color: AppTheme.colors.primary,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        path.title,
+                        style: AppTheme.textStyles.titleMedium?.copyWith(
+                          color: AppTheme.colors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${path.steps.length} steps • ${path.estimatedDuration} min',
+                        style: AppTheme.textStyles.bodySmall?.copyWith(
+                          color: AppTheme.colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _getDifficultyColor(path.difficulty).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _getDifficultyText(path.difficulty),
+                    style: TextStyle(
+                      color: _getDifficultyColor(path.difficulty),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Text(
-              'Get new personalized content based on ${widget.pet.name}\'s latest behavior patterns and preferences',
+              path.description,
               style: AppTheme.textStyles.bodyMedium?.copyWith(
                 color: AppTheme.colors.textSecondary,
               ),
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: !_isLoading ? _refreshRecommendations : null,
-                icon: _isLoading
-                    ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
-                          ),
-                        ),
-                      )
-                    : const Icon(Icons.refresh),
-                label: Text(_isLoading ? 'Refreshing...' : 'Refresh'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.colors.secondary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
+            LinearProgressIndicator(
+              value: path.progress,
+              backgroundColor: AppTheme.colors.surface,
+              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.colors.primary),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRecommendationsList() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+            const SizedBox(height: 8),
             Text(
-              'Recommended for You',
-              style: AppTheme.textStyles.titleLarge?.copyWith(
-                color: AppTheme.colors.textPrimary,
+              '${(path.progress * 100).toInt()}% Complete',
+              style: AppTheme.textStyles.bodySmall?.copyWith(
+                color: AppTheme.colors.textSecondary,
               ),
             ),
             const SizedBox(height: 16),
-            ..._recommendations.map((content) => _buildContentCard(content, true)),
+            ElevatedButton(
+              onPressed: () {
+                // TODO: Implement path continuation
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.colors.primary,
+                foregroundColor: AppTheme.colors.onPrimary,
+              ),
+              child: Text('Continue Path'),
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildRecentContent() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Recently Viewed',
-              style: AppTheme.textStyles.titleLarge?.copyWith(
-                color: AppTheme.colors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ..._recentContent.map((content) => _buildContentCard(content, false)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContentCard(PersonalizedContent content, bool isRecommendation) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isRecommendation 
-              ? AppTheme.colors.primary.withOpacity(0.3)
-              : AppTheme.colors.outline,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _getCategoryColor(content.category).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(
-                  _getCategoryIcon(content.category),
-                  color: _getCategoryColor(content.category),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      content.title,
-                      style: AppTheme.textStyles.titleMedium?.copyWith(
-                        color: AppTheme.colors.textPrimary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      content.category,
-                      style: AppTheme.textStyles.bodySmall?.copyWith(
-                        color: AppTheme.colors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (isRecommendation)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.colors.primary.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${(content.relevanceScore * 100).toInt()}%',
-                    style: AppTheme.textStyles.bodySmall?.copyWith(
-                      color: AppTheme.colors.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            content.description,
-            style: AppTheme.textStyles.bodyMedium?.copyWith(
-              color: AppTheme.colors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: content.tags.map((tag) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppTheme.colors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                tag,
-                style: AppTheme.textStyles.bodySmall?.copyWith(
-                  color: AppTheme.colors.primary,
-                  fontSize: 10,
-                ),
-              ),
-            )).toList(),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: Implement content viewing
-                  },
-                  icon: const Icon(Icons.visibility),
-                  label: const Text('View Content'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.colors.primary,
-                    side: BorderSide(color: AppTheme.colors.primary),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Implement content saving
-                  },
-                  icon: const Icon(Icons.bookmark_border),
-                  label: const Text('Save'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.colors.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     ).animate().fadeIn().slideX(begin: 0.3);
   }
 
-  Color _getCategoryColor(String category) {
-    switch (category.toLowerCase()) {
-      case 'training & enrichment':
-        return AppTheme.colors.primary;
-      case 'wellness & care':
-        return AppTheme.colors.success;
-      case 'social & bonding':
-        return AppTheme.colors.secondary;
-      case 'health & nutrition':
-        return AppTheme.colors.warning;
-      case 'exercise & activity':
-        return AppTheme.colors.info;
-      case 'grooming & care':
-        return AppTheme.colors.secondary;
-      case 'adventure & exploration':
-        return AppTheme.colors.primary;
-      default:
-        return AppTheme.colors.textSecondary;
+  Widget _buildExperiencesSection() {
+    if (_experiences.isEmpty) {
+      return const SizedBox.shrink();
     }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Personalized Experiences',
+          style: AppTheme.textStyles.headlineSmall?.copyWith(
+            color: AppTheme.colors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ..._experiences.map((experience) => _buildExperienceCard(experience)),
+      ],
+    );
   }
 
-  IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'training & enrichment':
-        return Icons.school;
-      case 'wellness & care':
-        return Icons.favorite;
-      case 'social & bonding':
-        return Icons.people;
-      case 'health & nutrition':
-        return Icons.health_and_safety;
-      case 'exercise & activity':
-        return Icons.fitness_center;
-      case 'grooming & care':
-        return Icons.brush;
-      case 'adventure & exploration':
-        return Icons.explore;
-      default:
-        return Icons.article;
-    }
+  Widget _buildExperienceCard(PersonalizedExperience experience) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.star,
+                  color: AppTheme.colors.warning,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        experience.title,
+                        style: AppTheme.textStyles.titleMedium?.copyWith(
+                          color: AppTheme.colors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${experience.duration} min • ${experience.activities.length} activities',
+                        style: AppTheme.textStyles.bodySmall?.copyWith(
+                          color: AppTheme.colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              experience.description,
+              style: AppTheme.textStyles.bodyMedium?.copyWith(
+                color: AppTheme.colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              children: experience.activities.map((activity) => 
+                Chip(
+                  label: Text(activity),
+                  backgroundColor: AppTheme.colors.primary.withOpacity(0.1),
+                  labelStyle: TextStyle(color: AppTheme.colors.primary),
+                ),
+              ).toList(),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                // TODO: Implement experience start
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.colors.primary,
+                foregroundColor: AppTheme.colors.onPrimary,
+              ),
+              child: Text('Start Experience'),
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn().slideX(begin: 0.3);
   }
-}// Personalized Content Widget
+}

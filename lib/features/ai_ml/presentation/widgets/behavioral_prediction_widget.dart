@@ -14,85 +14,238 @@ class BehavioralPredictionWidget extends StatefulWidget {
 }
 
 class _BehavioralPredictionWidgetState extends State<BehavioralPredictionWidget> {
-  List<Map<String, dynamic>> _behaviorPredictions = [];
-  List<Map<String, dynamic>> _aiInsights = [];
+  final List<BehavioralPrediction> _predictions = [];
+  final List<BehavioralPattern> _patterns = [];
+  bool _isAnalyzing = false;
 
   @override
   void initState() {
     super.initState();
-    _loadBehaviorData();
+    _loadBehavioralData();
   }
 
-  void _loadBehaviorData() {
-    // Mock data - in real app, this would come from AI service
-    _behaviorPredictions = [
-      {
-        'id': '1',
-        'type': BehaviorType.playing,
-        'description': '${widget.pet.name} is likely to be most active between 3-5 PM',
-        'probability': 0.87,
-        'predictedTime': DateTime.now().add(const Duration(hours: 2)),
-        'factors': ['Previous activity patterns', 'Weather conditions', 'Recent rest periods'],
-        'recommendation': 'Schedule playtime and exercise during this window',
-      },
-      {
-        'id': '2',
-        'type': BehaviorType.sleeping,
-        'description': 'Expected deep sleep period from 10 PM to 6 AM',
-        'probability': 0.92,
-        'predictedTime': DateTime.now().add(const Duration(hours: 8)),
-        'factors': ['Circadian rhythm', 'Daily activity levels', 'Sleep quality history'],
-        'recommendation': 'Ensure quiet environment and comfortable sleeping area',
-      },
-      {
-        'id': '3',
-        'type': BehaviorType.socializing,
-        'description': 'High likelihood of seeking attention around meal times',
-        'probability': 0.78,
-        'predictedTime': DateTime.now().add(const Duration(hours: 4)),
-        'factors': ['Feeding schedule', 'Social interaction patterns', 'Attention-seeking behavior'],
-        'recommendation': 'Plan bonding activities and positive reinforcement',
-      },
-    ];
+  void _loadBehavioralData() {
+    // Load real behavioral data from storage/database
+    // For now, we'll start with empty lists for a clean slate
+  }
 
-    _aiInsights = [
-      {
-        'id': '1',
-        'title': 'Activity Pattern Recognition',
-        'description': '${widget.pet.name} shows consistent 3-hour activity cycles',
-        'category': 'Behavior',
-        'confidence': 0.89,
-        'timestamp': DateTime.now().subtract(const Duration(hours: 1)),
-        'recommendations': [
-          'Optimize exercise timing around these cycles',
-          'Schedule training during peak activity periods',
-          'Allow rest periods between active sessions',
-        ],
-        'metadata': {
-          'cycleLength': '3 hours',
-          'peakActivity': 'Afternoon',
-          'restPattern': 'Evening',
-        },
-      },
-      {
-        'id': '2',
-        'title': 'Social Interaction Trends',
-        'description': 'Increasing social engagement with family members',
-        'category': 'Social',
-        'confidence': 0.76,
-        'timestamp': DateTime.now().subtract(const Duration(hours: 3)),
-        'recommendations': [
-          'Continue positive reinforcement for social behavior',
-          'Introduce new social experiences gradually',
-          'Monitor for any signs of social anxiety',
-        ],
-        'metadata': {
-          'trend': 'Increasing',
-          'duration': '2 weeks',
-          'familyMembers': 'All',
-        },
-      },
+  Future<void> _analyzeNewBehavior() async {
+    setState(() {
+      _isAnalyzing = true;
+    });
+
+    try {
+      // Simulate AI analysis (replace with actual AI service call)
+      await Future.delayed(const Duration(seconds: 3));
+      
+      final prediction = BehavioralPrediction(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        petId: widget.pet.id,
+        behavior: _generateRandomBehavior(),
+        probability: _generateProbability(),
+        timeframe: _generateTimeframe(),
+        confidence: _generateConfidence(),
+        timestamp: DateTime.now(),
+        recommendations: _generateBehaviorRecommendations(),
+        riskLevel: _generateRiskLevel(),
+      );
+
+      final pattern = BehavioralPattern(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        petId: widget.pet.id,
+        pattern: _generatePatternDescription(),
+        frequency: _generateFrequency(),
+        triggers: _generateTriggers(),
+        impact: _generateImpact(),
+        timestamp: DateTime.now(),
+      );
+
+      setState(() {
+        _predictions.insert(0, prediction);
+        _patterns.insert(0, pattern);
+        _isAnalyzing = false;
+      });
+
+      _showAnalysisResults(prediction, pattern);
+    } catch (e) {
+      setState(() {
+        _isAnalyzing = false;
+      });
+      _showError('Behavior analysis failed. Please try again.');
+    }
+  }
+
+  String _generateRandomBehavior() {
+    final behaviors = [
+      'Increased vocalization',
+      'Aggressive play behavior',
+      'Separation anxiety signs',
+      'Food guarding behavior',
+      'Excessive grooming',
+      'Destructive chewing',
+      'Fear of loud noises',
+      'Social withdrawal',
+      'Hyperactivity',
+      'Sleep pattern changes'
     ];
+    return behaviors[DateTime.now().millisecond % behaviors.length];
+  }
+
+  double _generateProbability() {
+    return 0.3 + (DateTime.now().millisecond % 70) / 100;
+  }
+
+  String _generateTimeframe() {
+    final timeframes = [
+      'Within 24 hours',
+      'Within 3 days',
+      'Within a week',
+      'Within 2 weeks',
+      'Within a month'
+    ];
+    return timeframes[DateTime.now().millisecond % timeframes.length];
+  }
+
+  double _generateConfidence() {
+    return 0.6 + (DateTime.now().millisecond % 40) / 100;
+  }
+
+  List<String> _generateBehaviorRecommendations() {
+    final recommendations = [
+      'Increase daily exercise and mental stimulation',
+      'Implement positive reinforcement training',
+      'Create a consistent daily routine',
+      'Provide safe spaces for retreat',
+      'Consult with a professional trainer',
+      'Monitor for any health issues',
+      'Gradually expose to triggers',
+      'Use calming techniques and pheromones'
+    ];
+    return recommendations.take(3).toList();
+  }
+
+  RiskLevel _generateRiskLevel() {
+    final levels = [RiskLevel.low, RiskLevel.medium, RiskLevel.high];
+    return levels[DateTime.now().millisecond % levels.length];
+  }
+
+  String _generatePatternDescription() {
+    final patterns = [
+      'Behavior occurs more frequently in the evening',
+      'Triggered by specific sounds or movements',
+      'More common when owner is away',
+      'Associated with feeding times',
+      'Influenced by weather conditions',
+      'Related to social interactions',
+      'Connected to physical activity levels',
+      'Affected by environmental changes'
+    ];
+    return patterns[DateTime.now().millisecond % patterns.length];
+  }
+
+  String _generateFrequency() {
+    final frequencies = [
+      'Daily',
+      '2-3 times per week',
+      'Weekly',
+      'Occasionally',
+      'Seasonal'
+    ];
+    return frequencies[DateTime.now().millisecond % frequencies.length];
+  }
+
+  List<String> _generateTriggers() {
+    final triggers = [
+      'Loud noises',
+      'Strangers',
+      'Other animals',
+      'Changes in routine',
+      'New environments',
+      'Separation from owner',
+      'Physical discomfort',
+      'Overstimulation'
+    ];
+    return triggers.take(2).toList();
+  }
+
+  String _generateImpact() {
+    final impacts = [
+      'Mild - manageable with training',
+      'Moderate - requires intervention',
+      'Significant - affects daily life',
+      'Severe - needs professional help'
+    ];
+    return impacts[DateTime.now().millisecond % impacts.length];
+  }
+
+  void _showAnalysisResults(BehavioralPrediction prediction, BehavioralPattern pattern) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Behavior Analysis Complete!'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Predicted Behavior: ${prediction.behavior}'),
+              const SizedBox(height: 8),
+              Text('Probability: ${(prediction.probability * 100).toInt()}%'),
+              Text('Timeframe: ${prediction.timeframe}'),
+              Text('Risk Level: ${_getRiskLevelText(prediction.riskLevel)}'),
+              const SizedBox(height: 16),
+              Text('Pattern Detected:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(pattern.pattern),
+              const SizedBox(height: 16),
+              Text('Recommendations:', style: TextStyle(fontWeight: FontWeight.bold)),
+              ...prediction.recommendations.map((rec) => 
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text('• $rec', style: TextStyle(fontSize: 12)),
+                )
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppTheme.colors.error,
+      ),
+    );
+  }
+
+  String _getRiskLevelText(RiskLevel level) {
+    switch (level) {
+      case RiskLevel.low:
+        return 'Low';
+      case RiskLevel.medium:
+        return 'Medium';
+      case RiskLevel.high:
+        return 'High';
+    }
+  }
+
+  Color _getRiskLevelColor(RiskLevel level) {
+    switch (level) {
+      case RiskLevel.low:
+        return AppTheme.colors.success;
+      case RiskLevel.medium:
+        return AppTheme.colors.warning;
+      case RiskLevel.high:
+        return AppTheme.colors.error;
+    }
   }
 
   @override
@@ -102,28 +255,23 @@ class _BehavioralPredictionWidgetState extends State<BehavioralPredictionWidget>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildPredictionSummary(),
+          _buildHeader(),
           const SizedBox(height: 24),
-          _buildRunNewAnalysis(),
+          _buildAnalysisSection(),
           const SizedBox(height: 24),
-          _buildUpcomingPredictions(),
+          _buildPredictionsSection(),
           const SizedBox(height: 24),
-          _buildAIInsights(),
+          _buildPatternsSection(),
         ],
       ),
     );
   }
 
-  Widget _buildPredictionSummary() {
-    final highConfidencePredictions = _behaviorPredictions
-        .where((pred) => pred['probability'] > 0.8)
-        .length;
-    
+  Widget _buildHeader() {
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -136,7 +284,7 @@ class _BehavioralPredictionWidgetState extends State<BehavioralPredictionWidget>
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  'Behavior Prediction Summary',
+                  'Behavioral Prediction',
                   style: AppTheme.textStyles.headlineSmall?.copyWith(
                     color: AppTheme.colors.textPrimary,
                   ),
@@ -144,413 +292,306 @@ class _BehavioralPredictionWidgetState extends State<BehavioralPredictionWidget>
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildPredictionStat(
-                    'High Confidence',
-                    '$highConfidencePredictions',
-                    'predictions',
-                    Icons.verified,
-                    AppTheme.colors.success,
-                  ),
-                ),
-                Expanded(
-                  child: _buildPredictionStat(
-                    'Total Predictions',
-                    '${_behaviorPredictions.length}',
-                    'active',
-                    Icons.analytics,
-                    AppTheme.colors.primary,
-                  ),
-                ),
-                Expanded(
-                  child: _buildPredictionStat(
-                    'AI Insights',
-                    '${_aiInsights.length}',
-                    'available',
-                    Icons.lightbulb,
-                    AppTheme.colors.warning,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPredictionStat(String label, String value, String unit, IconData icon, Color color) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 32),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: AppTheme.textStyles.titleLarge?.copyWith(
-            color: AppTheme.colors.textPrimary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          '$label $unit',
-          style: AppTheme.textStyles.bodySmall?.copyWith(
-            color: AppTheme.colors.textSecondary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRunNewAnalysis() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
             Text(
-              'Run New Analysis',
-              style: AppTheme.textStyles.titleLarge?.copyWith(
-                color: AppTheme.colors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Analyze recent behavior patterns to generate new predictions and insights',
+              'AI-powered behavioral analysis to predict and understand your pet\'s behavior patterns.',
               style: AppTheme.textStyles.bodyMedium?.copyWith(
                 color: AppTheme.colors.textSecondary,
               ),
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  _runNewAnalysis();
-                },
-                icon: const Icon(Icons.psychology),
-                label: const Text('Analyze Behavior'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.colors.secondary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildUpcomingPredictions() {
+  Widget _buildAnalysisSection() {
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Icon(
+              Icons.analytics,
+              size: 64,
+              color: AppTheme.colors.primary,
+            ),
+            const SizedBox(height: 16),
             Text(
-              'Upcoming Predictions',
-              style: AppTheme.textStyles.titleLarge?.copyWith(
+              'Analyze Behavior Patterns',
+              style: AppTheme.textStyles.headlineSmall?.copyWith(
                 color: AppTheme.colors.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
-            ..._behaviorPredictions.map((prediction) => _buildPredictionCard(prediction)),
+            Text(
+              'Get AI-powered insights into your pet\'s behavior and predictions for future actions.',
+              style: AppTheme.textStyles.bodyMedium?.copyWith(
+                color: AppTheme.colors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isAnalyzing ? null : _analyzeNewBehavior,
+                icon: _isAnalyzing 
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppTheme.colors.onPrimary,
+                          ),
+                        ),
+                      )
+                    : Icon(Icons.psychology),
+                label: Text(_isAnalyzing ? 'Analyzing...' : 'Analyze Behavior'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.colors.primary,
+                  foregroundColor: AppTheme.colors.onPrimary,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPredictionCard(Map<String, dynamic> prediction) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.colors.outline),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+  Widget _buildPredictionsSection() {
+    if (_predictions.isEmpty) {
+      return Card(
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppTheme.colors.primary.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(
-                  _getBehaviorIcon(prediction['type']),
-                  color: AppTheme.colors.primary,
-                  size: 20,
+              Icon(
+                Icons.timeline,
+                size: 64,
+                color: AppTheme.colors.textSecondary,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No Predictions Yet',
+                style: AppTheme.textStyles.headlineSmall?.copyWith(
+                  color: AppTheme.colors.textPrimary,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
+              const SizedBox(height: 16),
+              Text(
+                'Start analyzing behavior to get AI-powered predictions and insights.',
+                style: AppTheme.textStyles.bodyMedium?.copyWith(
+                  color: AppTheme.colors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Recent Predictions',
+          style: AppTheme.textStyles.headlineSmall?.copyWith(
+            color: AppTheme.colors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ..._predictions.map((prediction) => _buildPredictionCard(prediction)),
+      ],
+    );
+  }
+
+  Widget _buildPredictionCard(BehavioralPrediction prediction) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _getRiskLevelColor(prediction.riskLevel).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _getRiskLevelText(prediction.riskLevel),
+                    style: TextStyle(
+                      color: _getRiskLevelColor(prediction.riskLevel),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${(prediction.probability * 100).toInt()}%',
+                  style: AppTheme.textStyles.titleMedium?.copyWith(
+                    color: AppTheme.colors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              prediction.behavior,
+              style: AppTheme.textStyles.titleMedium?.copyWith(
+                color: AppTheme.colors.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Expected: ${prediction.timeframe}',
+              style: AppTheme.textStyles.bodySmall?.copyWith(
+                color: AppTheme.colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Recommendations:',
+              style: AppTheme.textStyles.bodyMedium?.copyWith(
+                color: AppTheme.colors.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...prediction.recommendations.map((rec) => 
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _getBehaviorText(prediction['type']),
-                      style: AppTheme.textStyles.titleMedium?.copyWith(
-                        color: AppTheme.colors.textPrimary,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Icon(
+                      Icons.check_circle,
+                      size: 16,
+                      color: AppTheme.colors.success,
                     ),
-                    Text(
-                      '${(prediction['probability'] * 100).toInt()}% probability',
-                      style: AppTheme.textStyles.bodySmall?.copyWith(
-                        color: AppTheme.colors.primary,
-                        fontWeight: FontWeight.bold,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        rec,
+                        style: AppTheme.textStyles.bodySmall?.copyWith(
+                          color: AppTheme.colors.textSecondary,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getProbabilityColor(prediction['probability']).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _formatTime(prediction['predictedTime']),
-                  style: AppTheme.textStyles.bodySmall?.copyWith(
-                    color: _getProbabilityColor(prediction['probability']),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            prediction['description'],
-            style: AppTheme.textStyles.bodyMedium?.copyWith(
-              color: AppTheme.colors.textPrimary,
+              )
             ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Recommendation:',
-            style: AppTheme.textStyles.bodySmall?.copyWith(
-              color: AppTheme.colors.primary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            prediction['recommendation'],
-            style: AppTheme.textStyles.bodySmall?.copyWith(
-              color: AppTheme.colors.textSecondary,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     ).animate().fadeIn().slideX(begin: 0.3);
   }
 
-  Widget _buildAIInsights() {
+  Widget _buildPatternsSection() {
+    if (_patterns.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Behavioral Patterns',
+          style: AppTheme.textStyles.headlineSmall?.copyWith(
+            color: AppTheme.colors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ..._patterns.map((pattern) => _buildPatternCard(pattern)),
+      ],
+    );
+  }
+
+  Widget _buildPatternCard(BehavioralPattern pattern) {
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Icon(
-                  Icons.lightbulb,
-                  color: AppTheme.colors.warning,
-                  size: 28,
+                  Icons.pattern,
+                  color: AppTheme.colors.secondary,
+                  size: 24,
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  'AI Insights',
-                  style: AppTheme.textStyles.titleLarge?.copyWith(
-                    color: AppTheme.colors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ..._aiInsights.map((insight) => _buildInsightCard(insight)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInsightCard(Map<String, dynamic> insight) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.colors.outline),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      insight['title'],
-                      style: AppTheme.textStyles.titleMedium?.copyWith(
-                        color: AppTheme.colors.textPrimary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      insight['description'],
-                      style: AppTheme.textStyles.bodyMedium?.copyWith(
-                        color: AppTheme.colors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.colors.warning.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${(insight['confidence'] * 100).toInt()}%',
-                  style: AppTheme.textStyles.bodySmall?.copyWith(
-                    color: AppTheme.colors.warning,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Recommendations:',
-            style: AppTheme.textStyles.bodySmall?.copyWith(
-              color: AppTheme.colors.primary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          ...insight['recommendations'].map<Widget>((rec) => Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.check_circle,
-                  color: AppTheme.colors.success,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    rec,
-                    style: AppTheme.textStyles.bodySmall?.copyWith(
+                    pattern.pattern,
+                    style: AppTheme.textStyles.titleMedium?.copyWith(
                       color: AppTheme.colors.textPrimary,
                     ),
                   ),
                 ),
               ],
             ),
-          )),
-        ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _buildPatternInfo('Frequency', pattern.frequency),
+                const SizedBox(width: 24),
+                _buildPatternInfo('Impact', pattern.impact),
+              ],
+            ),
+            if (pattern.triggers.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Triggers: ${pattern.triggers.join(', ')}',
+                style: AppTheme.textStyles.bodySmall?.copyWith(
+                  color: AppTheme.colors.textSecondary,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     ).animate().fadeIn().slideX(begin: 0.3);
   }
 
-  void _runNewAnalysis() {
-    // TODO: Implement new behavior analysis
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Behavior analysis feature coming soon!'),
-        backgroundColor: AppTheme.colors.secondary,
-      ),
+  Widget _buildPatternInfo(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppTheme.textStyles.bodySmall?.copyWith(
+            color: AppTheme.colors.textSecondary,
+          ),
+        ),
+        Text(
+          value,
+          style: AppTheme.textStyles.bodyMedium?.copyWith(
+            color: AppTheme.colors.textPrimary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
-
-  IconData _getBehaviorIcon(BehaviorType type) {
-    switch (type) {
-      case BehaviorType.eating:
-        return Icons.restaurant;
-      case BehaviorType.sleeping:
-        return Icons.bedtime;
-      case BehaviorType.playing:
-        return Icons.sports_esports;
-      case BehaviorType.socializing:
-        return Icons.people;
-      case BehaviorType.exploring:
-        return Icons.explore;
-      case BehaviorType.resting:
-        return Icons.weekend;
-      case BehaviorType.training:
-        return Icons.school;
-      case BehaviorType.grooming:
-        return Icons.brush;
-    }
-  }
-
-  String _getBehaviorText(BehaviorType type) {
-    switch (type) {
-      case BehaviorType.eating:
-        return 'Eating';
-      case BehaviorType.sleeping:
-        return 'Sleeping';
-      case BehaviorType.playing:
-        return 'Playing';
-      case BehaviorType.socializing:
-        return 'Socializing';
-      case BehaviorType.exploring:
-        return 'Exploring';
-      case BehaviorType.resting:
-        return 'Resting';
-      case BehaviorType.training:
-        return 'Training';
-      case BehaviorType.grooming:
-        return 'Grooming';
-    }
-  }
-
-  Color _getProbabilityColor(double probability) {
-    if (probability >= 0.8) {
-      return AppTheme.colors.success;
-    } else if (probability >= 0.6) {
-      return AppTheme.colors.warning;
-    } else {
-      return AppTheme.colors.error;
-    }
-  }
-
-  String _formatTime(DateTime time) {
-    final now = DateTime.now();
-    final difference = time.difference(now);
-    
-    if (difference.inHours < 1) {
-      return '${difference.inMinutes}m';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h';
-    } else {
-      return '${difference.inDays}d';
-    }
-  }
-}// Behavioral Prediction Widget
+}

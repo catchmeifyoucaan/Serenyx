@@ -52,6 +52,9 @@ dependencies:
   lottie: ^2.7.0
   flutter_animate: ^4.2.0
   
+  # Image handling
+  image_picker: ^1.0.4
+  
   # Utilities
   shared_preferences: ^2.2.2
   intl: ^0.18.1
