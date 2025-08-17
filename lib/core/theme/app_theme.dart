@@ -198,6 +198,17 @@ class AppThemeColors {
   Color get lightPink => AppTheme.lightPink;
   Color get textPrimary => AppTheme.warmGrey;
   Color get textSecondary => AppTheme.warmGrey.withOpacity(0.7);
+  
+  // Additional colors for widgets
+  Color get primary => AppTheme.leafGreen;
+  Color get secondary => AppTheme.heartPink;
+  Color get background => AppTheme.softPink;
+  Color get surface => AppTheme.gentleCream;
+  Color get onPrimary => Colors.white;
+  Color get onSecondary => Colors.white;
+  Color get error => Colors.red;
+  Color get warning => Colors.orange;
+  Color get success => Colors.green;
 }
 
 // Text styles class for easier access

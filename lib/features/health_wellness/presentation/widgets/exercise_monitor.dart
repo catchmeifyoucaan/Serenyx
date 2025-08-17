@@ -3,80 +3,64 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/pet.dart';
 
-class NutritionTracker extends StatefulWidget {
+class ExerciseMonitor extends StatefulWidget {
   final Pet pet;
 
-  const NutritionTracker({super.key, required this.pet});
+  const ExerciseMonitor({super.key, required this.pet});
 
   @override
-  State<NutritionTracker> createState() => _NutritionTrackerState();
+  State<ExerciseMonitor> createState() => _ExerciseMonitorState();
 }
 
-class _NutritionTrackerState extends State<NutritionTracker> {
-  List<Map<String, dynamic>> _nutritionEntries = [];
-  List<Map<String, dynamic>> _feedingSchedules = [];
+class _ExerciseMonitorState extends State<ExerciseMonitor> {
+  List<Map<String, dynamic>> _exerciseEntries = [];
+  List<Map<String, dynamic>> _exerciseGoals = [];
   bool _isAddingEntry = false;
 
   @override
   void initState() {
     super.initState();
-    _loadNutritionData();
+    _loadExerciseData();
   }
 
-  void _loadNutritionData() {
+  void _loadExerciseData() {
     // Mock data - in real app, this would come from database
-    _nutritionEntries = [
+    _exerciseEntries = [
       {
         'id': '1',
-        'foodName': 'Premium Dog Food',
-        'quantity': 1.5,
-        'unit': 'cups',
-        'calories': 450,
-        'protein': 22.0,
-        'fat': 12.0,
-        'carbs': 45.0,
-        'feedingTime': DateTime.now().subtract(const Duration(hours: 2)),
-        'mealType': 'Breakfast',
-        'notes': '${widget.pet.name} ate well, seemed satisfied',
+        'activityType': 'Walking',
+        'duration': 30,
+        'distance': 2.5,
+        'caloriesBurned': 120,
+        'date': DateTime.now().subtract(const Duration(days: 1)),
+        'notes': '${widget.pet.name} enjoyed the walk, good energy',
       },
       {
         'id': '2',
-        'foodName': 'Chicken Treats',
-        'quantity': 2,
-        'unit': 'pieces',
-        'calories': 80,
-        'protein': 8.0,
-        'fat': 4.0,
-        'carbs': 2.0,
-        'feedingTime': DateTime.now().subtract(const Duration(hours: 4)),
-        'mealType': 'Snack',
-        'notes': 'Training reward, good behavior',
+        'activityType': 'Playtime',
+        'duration': 45,
+        'distance': 0,
+        'caloriesBurned': 80,
+        'date': DateTime.now().subtract(const Duration(days: 2)),
+        'notes': 'Fetch and tug-of-war, very active',
       },
     ];
 
-    _feedingSchedules = [
+    _exerciseGoals = [
       {
         'id': '1',
-        'mealType': 'Breakfast',
-        'time': '7:00 AM',
-        'quantity': 1.5,
-        'unit': 'cups',
+        'activityType': 'Daily Walks',
+        'targetDuration': 30,
+        'targetDistance': 2.0,
+        'frequency': 'Daily',
         'isActive': true,
       },
       {
         'id': '2',
-        'mealType': 'Lunch',
-        'time': '12:00 PM',
-        'quantity': 1.0,
-        'unit': 'cups',
-        'isActive': true,
-      },
-      {
-        'id': '3',
-        'mealType': 'Dinner',
-        'time': '6:00 PM',
-        'quantity': 1.5,
-        'unit': 'cups',
+        'activityType': 'Play Sessions',
+        'targetDuration': 60,
+        'targetDistance': 0,
+        'frequency': 'Daily',
         'isActive': true,
       },
     ];
@@ -89,84 +73,39 @@ class _NutritionTrackerState extends State<NutritionTracker> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildNutritionSummary(),
+          _buildExerciseSummary(),
           const SizedBox(height: 24),
-          _buildFeedingSchedule(),
+          _buildExerciseGoals(),
           const SizedBox(height: 24),
-          _buildAddNutritionEntry(),
+          _buildAddExerciseEntry(),
           const SizedBox(height: 24),
-          _buildNutritionHistory(),
+          _buildExerciseHistory(),
         ],
       ),
     );
   }
 
-  Widget _buildNutritionSummary() {
-    final todayEntries = _nutritionEntries.where(
-      (entry) => entry['feedingTime'].day == DateTime.now().day,
-    ).toList();
-
-    final totalCalories = todayEntries.fold<double>(
-      0, (sum, entry) => sum + entry['calories']);
-    final totalProtein = todayEntries.fold<double>(
-      0, (sum, entry) => sum + entry['protein']);
-    final totalFat = todayEntries.fold<double>(
-      0, (sum, entry) => sum + entry['fat']);
-
+  Widget _buildExerciseSummary() {
     return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.restaurant,
-                  color: AppTheme.colors.primary,
-                  size: 28,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Today\'s Nutrition',
-                  style: AppTheme.textStyles.headlineSmall?.copyWith(
-                    color: AppTheme.colors.textPrimary,
-                  ),
-                ),
-              ],
+            Text(
+              'Exercise Summary',
+              style: AppTheme.textStyles.headlineSmall?.copyWith(
+                color: AppTheme.colors.textPrimary,
+              ),
             ),
             const SizedBox(height: 16),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Expanded(
-                  child: _buildNutritionStat(
-                    'Calories',
-                    '${totalCalories.toInt()}',
-                    'kcal',
-                    Icons.local_fire_department,
-                    AppTheme.colors.warning,
-                  ),
-                ),
-                Expanded(
-                  child: _buildNutritionStat(
-                    'Protein',
-                    '${totalProtein.toInt()}',
-                    'g',
-                    Icons.fitness_center,
-                    AppTheme.colors.success,
-                  ),
-                ),
-                Expanded(
-                  child: _buildNutritionStat(
-                    'Fat',
-                    '${totalFat.toInt()}',
-                    'g',
-                    Icons.water_drop,
-                    AppTheme.colors.secondary,
-                  ),
-                ),
+                _buildSummaryItem('Today', '45 min', Icons.timer),
+                _buildSummaryItem('This Week', '4.5 hrs', Icons.calendar_today),
+                _buildSummaryItem('Calories', '680', Icons.local_fire_department),
               ],
             ),
           ],
@@ -175,14 +114,14 @@ class _NutritionTrackerState extends State<NutritionTracker> {
     );
   }
 
-  Widget _buildNutritionStat(String label, String value, String unit, IconData icon, Color color) {
+  Widget _buildSummaryItem(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: color, size: 32),
+        Icon(icon, color: AppTheme.colors.primary, size: 24),
         const SizedBox(height: 8),
         Text(
-          '$value $unit',
-          style: AppTheme.textStyles.titleLarge?.copyWith(
+          value,
+          style: AppTheme.textStyles.titleMedium?.copyWith(
             color: AppTheme.colors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
@@ -192,13 +131,12 @@ class _NutritionTrackerState extends State<NutritionTracker> {
           style: AppTheme.textStyles.bodySmall?.copyWith(
             color: AppTheme.colors.textSecondary,
           ),
-          textAlign: TextAlign.center,
         ),
       ],
     );
   }
 
-  Widget _buildFeedingSchedule() {
+  Widget _buildExerciseGoals() {
     return Card(
       elevation: 2,
       child: Padding(
@@ -207,36 +145,28 @@ class _NutritionTrackerState extends State<NutritionTracker> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Feeding Schedule',
+              'Exercise Goals',
               style: AppTheme.textStyles.headlineSmall?.copyWith(
                 color: AppTheme.colors.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
-            ..._feedingSchedules.map((schedule) => _buildScheduleItem(schedule)),
+            ..._exerciseGoals.map((goal) => _buildGoalItem(goal)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildScheduleItem(Map<String, dynamic> schedule) {
+  Widget _buildGoalItem(Map<String, dynamic> goal) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppTheme.colors.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(
-              Icons.schedule,
-              color: AppTheme.colors.primary,
-              size: 20,
-            ),
+          Icon(
+            Icons.fitness_center,
+            color: AppTheme.colors.primary,
+            size: 20,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -244,13 +174,13 @@ class _NutritionTrackerState extends State<NutritionTracker> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  schedule['mealType'],
+                  goal['activityType'],
                   style: AppTheme.textStyles.titleSmall?.copyWith(
                     color: AppTheme.colors.textPrimary,
                   ),
                 ),
                 Text(
-                  '${schedule['time']} • ${schedule['quantity']} ${schedule['unit']}',
+                  '${goal['targetDuration']} min ${goal['frequency']}',
                   style: AppTheme.textStyles.bodySmall?.copyWith(
                     color: AppTheme.colors.textSecondary,
                   ),
@@ -259,10 +189,10 @@ class _NutritionTrackerState extends State<NutritionTracker> {
             ),
           ),
           Switch(
-            value: schedule['isActive'],
+            value: goal['isActive'],
             onChanged: (value) {
               setState(() {
-                schedule['isActive'] = value;
+                goal['isActive'] = value;
               });
             },
             activeColor: AppTheme.colors.primary,
@@ -272,7 +202,7 @@ class _NutritionTrackerState extends State<NutritionTracker> {
     );
   }
 
-  Widget _buildAddNutritionEntry() {
+  Widget _buildAddExerciseEntry() {
     return Card(
       elevation: 2,
       child: Padding(
@@ -284,7 +214,7 @@ class _NutritionTrackerState extends State<NutritionTracker> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Add Nutrition Entry',
+                  'Add Exercise Entry',
                   style: AppTheme.textStyles.headlineSmall?.copyWith(
                     color: AppTheme.colors.textPrimary,
                   ),
@@ -304,7 +234,7 @@ class _NutritionTrackerState extends State<NutritionTracker> {
             ),
             if (_isAddingEntry) ...[
               const SizedBox(height: 16),
-              _buildNutritionForm(),
+              _buildExerciseForm(),
             ],
           ],
         ),
@@ -312,12 +242,12 @@ class _NutritionTrackerState extends State<NutritionTracker> {
     );
   }
 
-  Widget _buildNutritionForm() {
+  Widget _buildExerciseForm() {
     return Column(
       children: [
         TextField(
           decoration: InputDecoration(
-            labelText: 'Food Name',
+            labelText: 'Activity Type',
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -329,7 +259,7 @@ class _NutritionTrackerState extends State<NutritionTracker> {
             Expanded(
               child: TextField(
                 decoration: InputDecoration(
-                  labelText: 'Quantity',
+                  labelText: 'Duration (min)',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -341,42 +271,12 @@ class _NutritionTrackerState extends State<NutritionTracker> {
             Expanded(
               child: TextField(
                 decoration: InputDecoration(
-                  labelText: 'Unit',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                decoration: InputDecoration(
-                  labelText: 'Calories',
+                  labelText: 'Distance (km)',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 keyboardType: TextInputType.number,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: 'Meal Type',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                items: ['Breakfast', 'Lunch', 'Dinner', 'Snack']
-                    .map((type) => DropdownMenuItem(value: type, child: Text(type)))
-                    .toList(),
-                onChanged: (value) {},
               ),
             ),
           ],
@@ -396,7 +296,7 @@ class _NutritionTrackerState extends State<NutritionTracker> {
           width: double.infinity,
           child: ElevatedButton(
             onPressed: () {
-              // Add nutrition entry logic
+              // Add exercise entry logic
               setState(() {
                 _isAddingEntry = false;
               });
@@ -416,7 +316,7 @@ class _NutritionTrackerState extends State<NutritionTracker> {
     );
   }
 
-  Widget _buildNutritionHistory() {
+  Widget _buildExerciseHistory() {
     return Card(
       elevation: 2,
       child: Padding(
@@ -425,13 +325,13 @@ class _NutritionTrackerState extends State<NutritionTracker> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Recent Entries',
+              'Recent Exercise',
               style: AppTheme.textStyles.headlineSmall?.copyWith(
                 color: AppTheme.colors.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
-            ..._nutritionEntries.map((entry) => _buildHistoryItem(entry)),
+            ..._exerciseEntries.map((entry) => _buildHistoryItem(entry)),
           ],
         ),
       ),
@@ -451,7 +351,7 @@ class _NutritionTrackerState extends State<NutritionTracker> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Icon(
-              Icons.restaurant,
+              Icons.fitness_center,
               color: AppTheme.colors.primary,
               size: 20,
             ),
@@ -462,13 +362,13 @@ class _NutritionTrackerState extends State<NutritionTracker> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  entry['foodName'],
+                  entry['activityType'],
                   style: AppTheme.textStyles.titleSmall?.copyWith(
                     color: AppTheme.colors.textPrimary,
                   ),
                 ),
                 Text(
-                  '${entry['quantity']} ${entry['unit']} • ${entry['calories']} cal',
+                  '${entry['duration']} min • ${entry['caloriesBurned']} cal',
                   style: AppTheme.textStyles.bodySmall?.copyWith(
                     color: AppTheme.colors.textSecondary,
                   ),
@@ -486,7 +386,7 @@ class _NutritionTrackerState extends State<NutritionTracker> {
             ),
           ),
           Text(
-            _formatTime(entry['feedingTime']),
+            _formatDate(entry['date']),
             style: AppTheme.textStyles.bodySmall?.copyWith(
               color: AppTheme.colors.textSecondary,
             ),
@@ -496,16 +396,13 @@ class _NutritionTrackerState extends State<NutritionTracker> {
     );
   }
 
-  String _formatTime(DateTime time) {
+  String _formatDate(DateTime date) {
     final now = DateTime.now();
-    final difference = now.difference(time);
+    final difference = now.difference(date).inDays;
     
-    if (difference.inHours < 1) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${difference.inDays}d ago';
-    }
+    if (difference == 0) return 'Today';
+    if (difference == 1) return 'Yesterday';
+    if (difference < 7) return '$difference days ago';
+    return '${date.day}/${date.month}/${date.year}';
   }
 }
