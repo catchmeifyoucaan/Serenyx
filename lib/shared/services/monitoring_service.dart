@@ -364,33 +364,50 @@ class MonitoringService {
     }).where((alert) => alert.id.isNotEmpty);
   }
 
-  Future<AnalyticsDashboard> getAnalyticsDashboard({
-    String? timeRange,
-    String? userId,
-  }) async {
+  /// Get active A/B tests
+  Future<List<ABTest>> getActiveABTests() async {
     try {
-      final queryParams = <String, String>{};
-      
-      if (timeRange != null) queryParams['timeRange'] = timeRange;
-      if (userId != null) queryParams['userId'] = userId;
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/monitoring/ab-tests/active'),
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+          'Content-Type': 'application/json',
+        },
+      );
 
-      final uri = Uri.parse('$_baseUrl/api/monitoring/dashboard').replace(queryParameters: queryParams);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => ABTest.fromJson(json)).toList();
+      } else {
+        throw Exception('Failed to load active A/B tests: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error loading active A/B tests: $e');
+    }
+  }
+
+  /// Get analytics dashboard data
+  Future<AnalyticsDashboard?> getAnalyticsDashboard({String? timeRange}) async {
+    try {
+      final queryParams = timeRange != null ? {'timeRange': timeRange} : {};
+      final uri = Uri.parse('$_baseUrl/api/monitoring/analytics/dashboard').replace(queryParameters: queryParams);
       
       final response = await http.get(
         uri,
         headers: {
           'Authorization': 'Bearer $_apiKey',
+          'Content-Type': 'application/json',
         },
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = json.decode(response.body);
         return AnalyticsDashboard.fromJson(data);
       } else {
-        throw Exception('Failed to fetch analytics dashboard: ${response.statusCode}');
+        throw Exception('Failed to load analytics dashboard: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('Failed to fetch analytics dashboard: $e');
+      throw Exception('Error loading analytics dashboard: $e');
     }
   }
 

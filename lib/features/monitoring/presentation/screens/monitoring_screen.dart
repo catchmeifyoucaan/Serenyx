@@ -119,108 +119,15 @@ class _MonitoringScreenState extends State<MonitoringScreen>
   }
 
   Future<void> _loadActiveTests() async {
-    // Mock data for now - in real implementation, this would come from the service
-    setState(() {
-      _activeTests = [
-        ABTest(
-          id: 'test-1',
-          name: 'New Home Screen Layout',
-          description: 'Testing new navigation layout vs current design',
-          status: ABTestStatus.active,
-          variants: ['control', 'variant-a', 'variant-b'],
-          startDate: DateTime.now().subtract(const Duration(days: 7)),
-          endDate: DateTime.now().add(const Duration(days: 14)),
-          targetAudience: 'all_users',
-          metrics: ['engagement', 'retention', 'conversion'],
-        ),
-        ABTest(
-          id: 'test-2',
-          name: 'AI Recommendation Engine',
-          description: 'Testing new AI algorithm for pet care recommendations',
-          status: ABTestStatus.active,
-          variants: ['current', 'enhanced'],
-          startDate: DateTime.now().subtract(const Duration(days: 3)),
-          endDate: DateTime.now().add(const Duration(days: 21)),
-          targetAudience: 'premium_users',
-          metrics: ['accuracy', 'user_satisfaction', 'adoption_rate'],
-        ),
-      ];
-    });
+    final tests = await _monitoringService.getActiveABTests();
+    setState(() => _activeTests = tests);
   }
 
   Future<void> _loadAnalyticsDashboard() async {
-    // Mock data for now - in real implementation, this would come from the service
-    setState(() {
-      _analyticsDashboard = AnalyticsDashboard(
-        timeRange: TimeRange(
-          start: DateTime.now().subtract(const Duration(days: 7)),
-          end: DateTime.now(),
-        ),
-        metrics: DashboardMetrics(
-          totalUsers: 15420,
-          activeUsers: 8920,
-          newUsers: 1240,
-          retentionRate: 0.78,
-          engagementScore: 0.85,
-          conversionRate: 0.12,
-          averageSessionDuration: const Duration(minutes: 8, seconds: 32),
-          totalSessions: 45670,
-        ),
-        topFeatures: [
-          'Pet Health Tracking',
-          'AI Insights',
-          'Social Network',
-          'Training Progress',
-          'Veterinary AI',
-        ],
-        userSegments: [
-          'New Users (0-7 days)',
-          'Active Users (8-30 days)',
-          'Retained Users (31-90 days)',
-          'Power Users (90+ days)',
-        ],
-        performanceAlerts: [
-          Alert(
-            id: 'alert-1',
-            type: AlertType.performance,
-            severity: AlertSeverity.warning,
-            title: 'High API Response Time',
-            message: 'Veterinary AI API response time increased by 40%',
-            timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-            isResolved: false,
-          ),
-          Alert(
-            id: 'alert-2',
-            type: AlertType.error,
-            severity: AlertSeverity.critical,
-            title: 'Database Connection Issues',
-            message: 'Multiple database connection failures detected',
-            timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-            isResolved: true,
-          ),
-        ],
-        insights: [
-          Insight(
-            id: 'insight-1',
-            type: InsightType.performance,
-            title: 'Performance Improvement',
-            message: 'Image upload processing time reduced by 25% after optimization',
-            timestamp: DateTime.now().subtract(const Duration(days: 1)),
-            impact: 'high',
-            confidence: 0.95,
-          ),
-          Insight(
-            id: 'insight-2',
-            type: InsightType.user_behavior,
-            title: 'User Engagement Pattern',
-            message: 'Users are most active between 6-8 PM, consider timing for notifications',
-            timestamp: DateTime.now().subtract(const Duration(days: 2)),
-            impact: 'medium',
-            confidence: 0.87,
-          ),
-        ],
-      );
-    });
+    final dashboard = await _monitoringService.getAnalyticsDashboard(
+      timeRange: _selectedTimeRange,
+    );
+    setState(() => _analyticsDashboard = dashboard);
   }
 
   void _showSnackBar(String message) {
