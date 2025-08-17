@@ -40,6 +40,7 @@ class DefaultFirebaseOptions {
     }
   }
 
+  // TODO: Replace with your actual Firebase project configuration
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'YOUR_WEB_API_KEY',
     appId: 'YOUR_WEB_APP_ID',
@@ -50,6 +51,7 @@ class DefaultFirebaseOptions {
     measurementId: 'YOUR_MEASUREMENT_ID',
   );
 
+  // TODO: Replace with your actual Firebase project configuration
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'YOUR_ANDROID_API_KEY',
     appId: 'YOUR_ANDROID_APP_ID',
@@ -58,6 +60,7 @@ class DefaultFirebaseOptions {
     storageBucket: 'YOUR_PROJECT_ID.appspot.com',
   );
 
+  // TODO: Replace with your actual Firebase project configuration
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'YOUR_IOS_API_KEY',
     appId: 'YOUR_IOS_APP_ID',
@@ -67,6 +70,7 @@ class DefaultFirebaseOptions {
     iosBundleId: 'com.yourcompany.serenyx',
   );
 
+  // TODO: Replace with your actual Firebase project configuration
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'YOUR_MACOS_API_KEY',
     appId: 'YOUR_MACOS_APP_ID',
@@ -76,6 +80,7 @@ class DefaultFirebaseOptions {
     iosBundleId: 'com.yourcompany.serenyx',
   );
 
+  // TODO: Replace with your actual Firebase project configuration
   static const FirebaseOptions windows = FirebaseOptions(
     apiKey: 'YOUR_WINDOWS_API_KEY',
     appId: 'YOUR_WINDOWS_APP_ID',
