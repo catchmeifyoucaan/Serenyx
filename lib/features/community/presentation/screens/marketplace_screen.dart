@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../shared/models/pet.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/models/pet.dart';
 import '../widgets/service_card.dart';
 import '../widgets/product_card.dart';
 import '../widgets/marketplace_filter.dart';

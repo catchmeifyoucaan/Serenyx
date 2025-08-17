@@ -326,7 +326,7 @@ class _EmotionRecognitionWidgetState extends State<EmotionRecognitionWidget> {
       case PetEmotion.calm:
         return Icons.sentiment_satisfied;
       case PetEmotion.excited:
-        return Icons.sentiment_excited;
+        return Icons.sentiment_very_satisfied;
       case PetEmotion.anxious:
         return Icons.sentiment_dissatisfied;
       case PetEmotion.sad:

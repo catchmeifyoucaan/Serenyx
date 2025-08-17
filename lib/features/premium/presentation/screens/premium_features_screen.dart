@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../shared/models/pet.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/models/pet.dart';
 import '../widgets/premium_analytics_dashboard.dart';
 import '../widgets/unlimited_pet_profiles.dart';
 import '../widgets/advanced_insights.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../shared/models/pet.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/models/pet.dart';
 import '../widgets/emotion_recognition_widget.dart';
 import '../widgets/behavioral_prediction_widget.dart';
 import '../widgets/personalized_content_widget.dart';

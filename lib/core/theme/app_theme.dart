@@ -209,6 +209,8 @@ class AppThemeColors {
   Color get error => Colors.red;
   Color get warning => Colors.orange;
   Color get success => Colors.green;
+  Color get outline => AppTheme.warmGrey.withOpacity(0.3);
+  Color get info => Colors.blue;
 }
 
 // Text styles class for easier access

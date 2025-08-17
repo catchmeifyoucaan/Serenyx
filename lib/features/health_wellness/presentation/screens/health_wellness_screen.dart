@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../shared/models/pet.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../shared/models/pet.dart';
 import '../widgets/nutrition_tracker.dart';
 import '../widgets/exercise_monitor.dart';
 import '../widgets/mental_health_monitor.dart';
