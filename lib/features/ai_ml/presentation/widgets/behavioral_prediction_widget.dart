@@ -1,7 +1,3 @@
-diff --git a/lib/features/ai_ml/presentation/widgets/behavioral_prediction_widget.dart b/lib/features/ai_ml/presentation/widgets/behavioral_prediction_widget.dart
---- a/lib/features/ai_ml/presentation/widgets/behavioral_prediction_widget.dart
-+++ b/lib/features/ai_ml/presentation/widgets/behavioral_prediction_widget.dart
-@@ -0,0 +1,556 @@
 +import 'package:flutter/material.dart';
 +import 'package:flutter_animate/flutter_animate.dart';
 +import '../../../../core/theme/app_theme.dart';
