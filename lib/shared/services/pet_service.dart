@@ -1,10 +1,12 @@
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../models/pet.dart';
 
 class PetService {
-  static const String _petsKey = 'user_pets';
-  static const String _currentPetKey = 'current_pet';
+  // Firestore collections
+  static const String _usersCollection = 'users';
+  static const String _petsCollection = 'pets';
   
   // Singleton pattern
   static final PetService _instance = PetService._internal();
@@ -14,6 +16,8 @@ class PetService {
   // In-memory cache
   List<Pet> _pets = [];
   Pet? _currentPet;
+  StreamSubscription? _petsSubscription;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Getters
   List<Pet> get pets => List.unmodifiable(_pets);
@@ -22,86 +26,57 @@ class PetService {
 
   /// Initialize the service and load pets from storage
   Future<void> initialize() async {
-    await _loadPets();
-    await _loadCurrentPet();
+    await _listenToPets();
   }
 
-  /// Load pets from local storage
-  Future<void> _loadPets() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final petsJson = prefs.getStringList(_petsKey) ?? [];
-      
-      _pets = petsJson
-          .map((json) => Pet.fromJson(jsonDecode(json)))
-          .toList();
-    } catch (e) {
-      print('Error loading pets: $e');
+  Future<void> _listenToPets() async {
+    await _petsSubscription?.cancel();
+    final userId = fb.FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
       _pets = [];
+      _currentPet = null;
+      return;
     }
-  }
-
-  /// Load current pet from local storage
-  Future<void> _loadCurrentPet() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final currentPetId = prefs.getString(_currentPetKey);
-      
-      if (currentPetId != null) {
-        _currentPet = _pets.firstWhere(
-          (pet) => pet.id == currentPetId,
-          orElse: () => _pets.isNotEmpty ? _pets.first : _createDefaultPet(),
-        );
-      } else if (_pets.isNotEmpty) {
-        _currentPet = _pets.first;
-        await _setCurrentPet(_currentPet!);
+    _petsSubscription = _firestore
+        .collection(_usersCollection)
+        .doc(userId)
+        .collection(_petsCollection)
+        .orderBy('createdAt', descending: false)
+        .snapshots()
+        .listen((snapshot) {
+      _pets = snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return Pet.fromJson(data);
+      }).toList();
+      if (_pets.isNotEmpty) {
+        _currentPet ??= _pets.first;
       } else {
-        _currentPet = _createDefaultPet();
-        await addPet(_currentPet!);
+        _currentPet = null;
       }
-    } catch (e) {
-      print('Error loading current pet: $e');
-      _currentPet = _createDefaultPet();
-    }
+    }, onError: (e) {
+      print('Error listening to pets: $e');
+    });
   }
 
-  /// Create a default pet for new users
-  Pet _createDefaultPet() {
-    final now = DateTime.now();
-    return Pet(
-      id: 'default-pet-${now.millisecondsSinceEpoch}',
-      name: 'Buddy',
-      type: 'Dog',
-      avatar: 'default',
-      birthDate: now.subtract(const Duration(days: 365 * 2)), // 2 years old
-      breed: 'Mixed Breed',
-      weight: 15.0,
-      ownerId: 'default-user',
-      createdAt: now,
-      updatedAt: now,
-      preferences: {
-        'favorite_toy': 'Ball',
-        'favorite_treat': 'Peanut Butter',
-        'energy_level': 'medium',
-      },
-      healthNotes: [
-        'Loves belly rubs',
-        'Enjoys long walks',
-        'Very friendly with other pets',
-      ],
-    );
+  /// Dispose subscriptions
+  Future<void> dispose() async {
+    await _petsSubscription?.cancel();
   }
+
+  /// No default pet creation in Firestore-backed service
 
   /// Add a new pet
   Future<bool> addPet(Pet pet) async {
     try {
-      _pets.add(pet);
-      await _savePets();
-      
-      if (_currentPet == null) {
-        await _setCurrentPet(pet);
-      }
-      
+      final userId = fb.FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) throw Exception('Not authenticated');
+      final docRef = _firestore
+          .collection(_usersCollection)
+          .doc(userId)
+          .collection(_petsCollection)
+          .doc(pet.id);
+      await docRef.set(pet.toJson());
       return true;
     } catch (e) {
       print('Error adding pet: $e');
@@ -112,19 +87,15 @@ class PetService {
   /// Update an existing pet
   Future<bool> updatePet(Pet updatedPet) async {
     try {
-      final index = _pets.indexWhere((pet) => pet.id == updatedPet.id);
-      if (index != -1) {
-        _pets[index] = updatedPet;
-        
-        if (_currentPet?.id == updatedPet.id) {
-          _currentPet = updatedPet;
-          await _setCurrentPet(updatedPet);
-        }
-        
-        await _savePets();
-        return true;
-      }
-      return false;
+      final userId = fb.FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) throw Exception('Not authenticated');
+      await _firestore
+          .collection(_usersCollection)
+          .doc(userId)
+          .collection(_petsCollection)
+          .doc(updatedPet.id)
+          .update(updatedPet.toJson());
+      return true;
     } catch (e) {
       print('Error updating pet: $e');
       return false;
@@ -134,16 +105,14 @@ class PetService {
   /// Remove a pet
   Future<bool> removePet(String petId) async {
     try {
-      _pets.removeWhere((pet) => pet.id == petId);
-      
-      if (_currentPet?.id == petId) {
-        _currentPet = _pets.isNotEmpty ? _pets.first : null;
-        if (_currentPet != null) {
-          await _setCurrentPet(_currentPet!);
-        }
-      }
-      
-      await _savePets();
+      final userId = fb.FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) throw Exception('Not authenticated');
+      await _firestore
+          .collection(_usersCollection)
+          .doc(userId)
+          .collection(_petsCollection)
+          .doc(petId)
+          .delete();
       return true;
     } catch (e) {
       print('Error removing pet: $e');
@@ -153,15 +122,9 @@ class PetService {
 
   /// Set the current active pet
   Future<bool> _setCurrentPet(Pet pet) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_currentPetKey, pet.id);
-      _currentPet = pet;
-      return true;
-    } catch (e) {
-      print('Error setting current pet: $e');
-      return false;
-    }
+    // Optional: could persist current pet ID in user doc
+    _currentPet = pet;
+    return true;
   }
 
   /// Change the current active pet
@@ -246,19 +209,7 @@ class PetService {
     }
   }
 
-  /// Save pets to local storage
-  Future<void> _savePets() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final petsJson = _pets
-          .map((pet) => jsonEncode(pet.toJson()))
-          .toList();
-      
-      await prefs.setStringList(_petsKey, petsJson);
-    } catch (e) {
-      print('Error saving pets: $e');
-    }
-  }
+  // No local persistence in Firestore-only service
 
   /// Get all pets
   List<Pet> getPets() {
@@ -307,16 +258,20 @@ class PetService {
 
   /// Clear all data (for testing or reset)
   Future<void> clearAllData() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_petsKey);
-      await prefs.remove(_currentPetKey);
-      
-      _pets.clear();
-      _currentPet = null;
-    } catch (e) {
-      print('Error clearing data: $e');
+    final userId = fb.FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+    final batch = _firestore.batch();
+    final query = await _firestore
+        .collection(_usersCollection)
+        .doc(userId)
+        .collection(_petsCollection)
+        .get();
+    for (final doc in query.docs) {
+      batch.delete(doc.reference);
     }
+    await batch.commit();
+    _pets.clear();
+    _currentPet = null;
   }
 
   /// Export pets data (for backup)
@@ -338,26 +293,7 @@ class PetService {
 
   /// Import pets data (for restore)
   Future<bool> importPetsData(String jsonData) async {
-    try {
-      final data = jsonDecode(jsonData);
-      final petsData = data['pets'] as List;
-      
-      _pets = petsData
-          .map((petJson) => Pet.fromJson(petJson))
-          .toList();
-      
-      if (data['currentPetId'] != null) {
-        await _setCurrentPet(_pets.firstWhere(
-          (pet) => pet.id == data['currentPetId'],
-          orElse: () => _pets.first,
-        ));
-      }
-      
-      await _savePets();
-      return true;
-    } catch (e) {
-      print('Error importing pets data: $e');
-      return false;
-    }
+    // Implement if needed: parse and write to Firestore
+    return false;
   }
 }
