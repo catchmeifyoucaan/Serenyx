@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:lottie/lottie.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/onboarding_models.dart';
 import 'dart:io';
@@ -39,6 +40,7 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
   int? _ageMonths;
   List<File> _selectedPhotos = [];
   final ImagePicker _picker = ImagePicker();
+  bool _toggleValue = true;
 
   @override
   void initState() {
@@ -53,6 +55,8 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
           _textController.text = widget.onboardingData.petBreed ?? '';
         } else if (widget.step.id == 4) { // Name
           _textController.text = widget.onboardingData.petName ?? '';
+        } else if (widget.step.id == 23) { // Preferred pet nickname
+          _textController.text = widget.onboardingData.preferredPetNickname ?? '';
         }
         break;
       case OnboardingStepType.selection:
@@ -62,44 +66,63 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
           _selectedSingleOption = widget.onboardingData.timeAvailability;
         } else if (widget.step.id == 18) { // Lifestyle
           _selectedSingleOption = widget.onboardingData.lifestylePreference;
+        } else if (widget.step.id == 21) { // Caregiver title
+          _selectedSingleOption = widget.onboardingData.caregiverTitle;
+        } else if (widget.step.id == 26) { // Soundscape style
+          _selectedSingleOption = widget.onboardingData.soundscapeStyle;
         }
         break;
       case OnboardingStepType.ageInput:
-        // Handle age loading if needed
+        // no-op
         break;
       case OnboardingStepType.photoUpload:
-        // Handle photo loading if needed
+        // no-op
         break;
       case OnboardingStepType.multiSelection:
-        if (widget.step.id == 7) { // Goals
+        if (widget.step.id == 7) {
           _selectedOptions.addAll(widget.onboardingData.primaryGoals ?? []);
-        } else if (widget.step.id == 8) { // Challenges
+        } else if (widget.step.id == 8) {
           _selectedOptions.addAll(widget.onboardingData.currentChallenges ?? []);
-        } else if (widget.step.id == 10) { // Mindfulness
+        } else if (widget.step.id == 10) {
           _selectedOptions.addAll(widget.onboardingData.mindfulnessPractices ?? []);
-        } else if (widget.step.id == 14) { // Social goals
+        } else if (widget.step.id == 14) {
           _selectedOptions.addAll(widget.onboardingData.socialGoals ?? []);
-        } else if (widget.step.id == 15) { // Special events
+        } else if (widget.step.id == 15) {
           _selectedOptions.addAll(widget.onboardingData.specialEvents ?? []);
-        } else if (widget.step.id == 16) { // Personality
+        } else if (widget.step.id == 16) {
           _selectedOptions.addAll(widget.onboardingData.petPersonality ?? []);
-        } else if (widget.step.id == 17) { // Health concerns
+        } else if (widget.step.id == 17) {
           _selectedOptions.addAll(widget.onboardingData.healthConcerns ?? []);
+        } else if (widget.step.id == 27) {
+          _selectedOptions.addAll(widget.onboardingData.favoritePetSounds ?? []);
+        } else if (widget.step.id == 29) {
+          _selectedOptions.addAll(List<String>.from(widget.onboardingData.toJson()['preferredAIFeatures'] ?? []));
+        } else if (widget.step.id == 30) {
+          _selectedOptions.addAll(List<String>.from(widget.onboardingData.toJson()['preferredNotifications'] ?? []));
         }
         break;
       case OnboardingStepType.routineInput:
         _routineText = widget.onboardingData.dailyRoutine;
         break;
       case OnboardingStepType.rating:
-        if (widget.step.id == 11) { // Health status
+        if (widget.step.id == 11) {
           _selectedRating = widget.onboardingData.petHealthStatus;
-        } else if (widget.step.id == 12) { // Stress level
+        } else if (widget.step.id == 12) {
           _selectedRating = widget.onboardingData.ownerStressLevel;
-        } else if (widget.step.id == 19) { // Commitment
+        } else if (widget.step.id == 19) {
           _selectedRating = widget.onboardingData.commitmentLevel;
         }
         break;
-      default:
+      case OnboardingStepType.toggle:
+        if (widget.step.id == 22) {
+          _toggleValue = widget.onboardingData.useNicknameInGreetings;
+        } else if (widget.step.id == 24) {
+          _toggleValue = widget.onboardingData.useNicknameInCommunity;
+        } else if (widget.step.id == 25) {
+          _toggleValue = widget.onboardingData.enableSoundscape;
+        } else if (widget.step.id == 28) {
+          _toggleValue = (widget.onboardingData.toJson()['optInBestPetVoting'] ?? true) as bool;
+        }
         break;
     }
   }
@@ -129,6 +152,8 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
         return _routineText != null && _routineText!.trim().isNotEmpty;
       case OnboardingStepType.rating:
         return _selectedRating != null;
+      case OnboardingStepType.toggle:
+        return true;
     }
   }
 
@@ -169,7 +194,8 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
           _saveRating();
         }
         break;
-      default:
+      case OnboardingStepType.toggle:
+        _saveToggle();
         break;
     }
   }
@@ -185,6 +211,12 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
       case 18: // Lifestyle
         widget.onDataUpdate('lifestylePreference', _selectedSingleOption);
         break;
+      case 21: // Caregiver title
+        widget.onDataUpdate('caregiverTitle', _selectedSingleOption);
+        break;
+      case 26: // Soundscape style
+        widget.onDataUpdate('soundscapeStyle', _selectedSingleOption);
+        break;
     }
   }
 
@@ -195,6 +227,9 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
         break;
       case 4: // Name
         widget.onDataUpdate('petName', _textController.text.trim());
+        break;
+      case 23: // Preferred pet nickname
+        widget.onDataUpdate('preferredPetNickname', _textController.text.trim());
         break;
     }
   }
@@ -232,6 +267,15 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
       case 17: // Health concerns
         widget.onDataUpdate('healthConcerns', List.from(_selectedOptions));
         break;
+      case 27: // Favorite pet sounds
+        widget.onDataUpdate('favoritePetSounds', List.from(_selectedOptions));
+        break;
+      case 29: // AI features
+        widget.onDataUpdate('preferredAIFeatures', List.from(_selectedOptions));
+        break;
+      case 30: // Notifications
+        widget.onDataUpdate('preferredNotifications', List.from(_selectedOptions));
+        break;
     }
   }
 
@@ -253,6 +297,23 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
     }
   }
 
+  void _saveToggle() {
+    switch (widget.step.id) {
+      case 22:
+        widget.onDataUpdate('useNicknameInGreetings', _toggleValue);
+        break;
+      case 24:
+        widget.onDataUpdate('useNicknameInCommunity', _toggleValue);
+        break;
+      case 25:
+        widget.onDataUpdate('enableSoundscape', _toggleValue);
+        break;
+      case 28:
+        widget.onDataUpdate('optInBestPetVoting', _toggleValue);
+        break;
+    }
+  }
+
   void _handleNext() {
     if (_canProceed) {
       _saveData();
@@ -269,14 +330,14 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
         children: [
           // Header
           _buildHeader(),
-          
+
           const SizedBox(height: 32),
-          
+
           // Content based on step type
           _buildStepContent(),
-          
+
           const SizedBox(height: 32),
-          
+
           // Action buttons
           _buildActionButtons(),
         ],
@@ -297,9 +358,9 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
           ),
           textAlign: TextAlign.center,
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Subtitle
         Text(
           widget.step.subtitle,
@@ -309,9 +370,9 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
           ),
           textAlign: TextAlign.center,
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Description
         Text(
           widget.step.description,
@@ -344,28 +405,37 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
         return _buildRatingContent();
       case OnboardingStepType.final:
         return _buildFinalContent();
+      case OnboardingStepType.toggle:
+        return _buildToggleContent();
     }
   }
 
   Widget _buildWelcomeContent() {
     return Column(
       children: [
-        Container(
-          width: 200,
-          height: 200,
-          decoration: BoxDecoration(
-            color: AppTheme.colors.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(100),
+        if (widget.step.lottieAsset != null)
+          SizedBox(
+            width: 220,
+            height: 220,
+            child: Lottie.asset(widget.step.lottieAsset!),
+          )
+        else
+          Container(
+            width: 200,
+            height: 200,
+            decoration: BoxDecoration(
+              color: AppTheme.colors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: Icon(
+              Icons.pets,
+              size: 100,
+              color: AppTheme.colors.primary,
+            ),
           ),
-          child: Icon(
-            Icons.pets,
-            size: 100,
-            color: AppTheme.colors.primary,
-          ),
-        ),
-        
+
         const SizedBox(height: 32),
-        
+
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
@@ -406,7 +476,13 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
   Widget _buildSelectionContent() {
     return Column(
       children: [
-        if (widget.step.image.isNotEmpty)
+        if (widget.step.lottieAsset != null)
+          SizedBox(
+            width: 180,
+            height: 180,
+            child: Lottie.asset(widget.step.lottieAsset!),
+          )
+        else if (widget.step.image.isNotEmpty)
           Container(
             width: 150,
             height: 150,
@@ -421,10 +497,10 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
               color: AppTheme.colors.textSecondary,
             ),
           ),
-        
+
         const SizedBox(height: 24),
-        
-        ...widget.step.options!.map((option) => 
+
+        ...widget.step.options!.map((option) =>
           _buildSelectionOption(option)
         ),
       ],
@@ -433,7 +509,7 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
 
   Widget _buildSelectionOption(String option) {
     final isSelected = _selectedSingleOption == option;
-    
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
@@ -481,7 +557,13 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
   Widget _buildInputContent() {
     return Column(
       children: [
-        if (widget.step.image.isNotEmpty)
+        if (widget.step.lottieAsset != null)
+          SizedBox(
+            width: 160,
+            height: 160,
+            child: Lottie.asset(widget.step.lottieAsset!),
+          )
+        else if (widget.step.image.isNotEmpty)
           Container(
             width: 120,
             height: 120,
@@ -496,9 +578,9 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
               color: AppTheme.colors.primary,
             ),
           ),
-        
+
         const SizedBox(height: 24),
-        
+
         TextField(
           controller: _textController,
           decoration: InputDecoration(
@@ -544,9 +626,9 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
             color: AppTheme.colors.primary,
           ),
         ),
-        
+
         const SizedBox(height: 24),
-        
+
         Row(
           children: [
             Expanded(
@@ -571,9 +653,9 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
                 ],
               ),
             ),
-            
+
             const SizedBox(width: 24),
-            
+
             Expanded(
               child: Column(
                 children: [
@@ -650,9 +732,9 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
             color: AppTheme.colors.primary,
           ),
         ),
-        
+
         const SizedBox(height: 24),
-        
+
         if (_selectedPhotos.isNotEmpty) ...[
           Wrap(
             spacing: 12,
@@ -660,7 +742,7 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
             children: _selectedPhotos.asMap().entries.map((entry) {
               final index = entry.key;
               final photo = entry.value;
-              
+
               return Stack(
                 children: [
                   Container(
@@ -701,10 +783,10 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
               );
             }).toList(),
           ),
-          
+
           const SizedBox(height: 24),
         ],
-        
+
         ElevatedButton.icon(
           onPressed: _pickImage,
           icon: Icon(Icons.add_a_photo),
@@ -734,7 +816,13 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
   Widget _buildMultiSelectionContent() {
     return Column(
       children: [
-        if (widget.step.image.isNotEmpty)
+        if (widget.step.lottieAsset != null)
+          SizedBox(
+            width: 160,
+            height: 160,
+            child: Lottie.asset(widget.step.lottieAsset!),
+          )
+        else if (widget.step.image.isNotEmpty)
           Container(
             width: 120,
             height: 120,
@@ -749,9 +837,9 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
               color: AppTheme.colors.primary,
             ),
           ),
-        
+
         const SizedBox(height: 24),
-        
+
         if (widget.step.maxSelections != null)
           Container(
             padding: const EdgeInsets.all(16),
@@ -769,10 +857,10 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
               textAlign: TextAlign.center,
             ),
           ),
-        
+
         const SizedBox(height: 24),
-        
-        ...widget.step.options!.map((option) => 
+
+        ...widget.step.options!.map((option) =>
           _buildMultiSelectionOption(option)
         ),
       ],
@@ -782,7 +870,7 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
   Widget _buildMultiSelectionOption(String option) {
     final isSelected = _selectedOptions.contains(option);
     final canSelect = _selectedOptions.length < (widget.step.maxSelections ?? 999) || isSelected;
-    
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
@@ -835,23 +923,30 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
   Widget _buildRoutineInputContent() {
     return Column(
       children: [
-        Container(
-          width: 120,
-          height: 120,
-          decoration: BoxDecoration(
-            color: AppTheme.colors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.colors.outline),
+        if (widget.step.lottieAsset != null)
+          SizedBox(
+            width: 140,
+            height: 140,
+            child: Lottie.asset(widget.step.lottieAsset!),
+          )
+        else
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: AppTheme.colors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.colors.outline),
+            ),
+            child: Icon(
+              Icons.schedule,
+              size: 48,
+              color: AppTheme.colors.primary,
+            ),
           ),
-          child: Icon(
-            Icons.schedule,
-            size: 48,
-            color: AppTheme.colors.primary,
-          ),
-        ),
-        
+
         const SizedBox(height: 24),
-        
+
         TextField(
           onChanged: (value) {
             setState(() {
@@ -884,38 +979,45 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
   Widget _buildRatingContent() {
     return Column(
       children: [
-        Container(
-          width: 120,
-          height: 120,
-          decoration: BoxDecoration(
-            color: AppTheme.colors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.colors.outline),
+        if (widget.step.lottieAsset != null)
+          SizedBox(
+            width: 140,
+            height: 140,
+            child: Lottie.asset(widget.step.lottieAsset!),
+          )
+        else
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              color: AppTheme.colors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.colors.outline),
+            ),
+            child: Icon(
+              Icons.star_rate,
+              size: 48,
+              color: AppTheme.colors.primary,
+            ),
           ),
-          child: Icon(
-            Icons.star_rate,
-            size: 48,
-            color: AppTheme.colors.primary,
-          ),
-        ),
-        
+
         const SizedBox(height: 24),
-        
+
         Text(
           'Rate from 1 to 5',
           style: AppTheme.textStyles.titleMedium?.copyWith(
             color: AppTheme.colors.textPrimary,
           ),
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: List.generate(5, (index) {
             final rating = index + 1;
             final isSelected = _selectedRating == rating;
-            
+
             return GestureDetector(
               onTap: () {
                 setState(() {
@@ -954,9 +1056,9 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
             );
           }),
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         if (_selectedRating != null)
           Container(
             padding: const EdgeInsets.all(16),
@@ -981,22 +1083,29 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
   Widget _buildFinalContent() {
     return Column(
       children: [
-        Container(
-          width: 150,
-          height: 150,
-          decoration: BoxDecoration(
-            color: AppTheme.colors.success.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(75),
+        if (widget.step.lottieAsset != null)
+          SizedBox(
+            width: 180,
+            height: 180,
+            child: Lottie.asset(widget.step.lottieAsset!),
+          )
+        else
+          Container(
+            width: 150,
+            height: 150,
+            decoration: BoxDecoration(
+              color: AppTheme.colors.success.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(75),
+            ),
+            child: Icon(
+              Icons.celebration,
+              size: 80,
+              color: AppTheme.colors.success,
+            ),
           ),
-          child: Icon(
-            Icons.celebration,
-            size: 80,
-            color: AppTheme.colors.success,
-          ),
-        ),
-        
+
         const SizedBox(height: 32),
-        
+
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
@@ -1034,6 +1143,51 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
     );
   }
 
+  Widget _buildToggleContent() {
+    return Column(
+      children: [
+        if (widget.step.lottieAsset != null)
+          SizedBox(
+            width: 140,
+            height: 140,
+            child: Lottie.asset(widget.step.lottieAsset!),
+          ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppTheme.colors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.colors.outline),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  widget.step.title,
+                  style: AppTheme.textStyles.titleMedium?.copyWith(
+                    color: AppTheme.colors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Switch(
+                value: _toggleValue,
+                activeColor: AppTheme.colors.primary,
+                onChanged: (val) {
+                  setState(() {
+                    _toggleValue = val;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildActionButtons() {
     return Row(
       children: [
@@ -1053,9 +1207,9 @@ class _OnboardingStepWidgetState extends State<OnboardingStepWidget> {
               child: const Text('Previous'),
             ),
           ),
-        
+
         if (widget.step.id > 1) const SizedBox(width: 16),
-        
+
         // Next/Complete Button
         Expanded(
           child: ElevatedButton(

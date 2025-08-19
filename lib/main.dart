@@ -27,6 +27,8 @@ import 'features/social_network/presentation/screens/social_network_screen.dart'
 import 'features/gamification/presentation/screens/gamification_screen.dart';
 import 'features/subscription/presentation/screens/subscription_screen.dart';
 import 'features/monitoring/presentation/screens/monitoring_screen.dart';
+import 'features/soundscape/presentation/screens/soundscape_screen.dart';
+import 'features/community/presentation/screens/best_pet_voting_screen.dart';
 import 'shared/services/auth_service.dart';
 import 'shared/services/pet_service.dart';
 import 'shared/services/session_service.dart';
@@ -172,6 +174,8 @@ class SerenyxApp extends StatelessWidget {
           '/gamification': (context) => const GamificationScreen(),
           '/subscription': (context) => const SubscriptionScreen(),
           '/monitoring': (context) => const MonitoringScreen(),
+          '/soundscape': (context) => const SoundscapeScreen(),
+          '/best-pet': (context) => const BestPetVotingScreen(),
         },
       ),
     );

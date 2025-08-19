@@ -95,6 +95,10 @@ class UserProfile {
   final String? bio;
   final List<String> interests;
   final String? emergencyContact;
+  final String? caregiverTitle; // e.g., Mom, Dad, Guardian
+  final bool? useNicknameInGreetings; // controls greeting like "Buddy's mom"
+  final bool? useNicknameInCommunity; // controls display name in community
+  final String? preferredPetNickname; // optional onboarding nickname
 
   UserProfile({
     this.firstName,
@@ -105,6 +109,10 @@ class UserProfile {
     this.bio,
     required this.interests,
     this.emergencyContact,
+    this.caregiverTitle,
+    this.useNicknameInGreetings,
+    this.useNicknameInCommunity,
+    this.preferredPetNickname,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -119,6 +127,10 @@ class UserProfile {
       bio: json['bio'],
       interests: List<String>.from(json['interests'] ?? []),
       emergencyContact: json['emergencyContact'],
+      caregiverTitle: json['caregiverTitle'],
+      useNicknameInGreetings: json['useNicknameInGreetings'],
+      useNicknameInCommunity: json['useNicknameInCommunity'],
+      preferredPetNickname: json['preferredPetNickname'],
     );
   }
 
@@ -132,6 +144,10 @@ class UserProfile {
       'bio': bio,
       'interests': interests,
       'emergencyContact': emergencyContact,
+      'caregiverTitle': caregiverTitle,
+      'useNicknameInGreetings': useNicknameInGreetings,
+      'useNicknameInCommunity': useNicknameInCommunity,
+      'preferredPetNickname': preferredPetNickname,
     };
   }
 

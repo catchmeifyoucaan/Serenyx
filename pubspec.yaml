@@ -152,6 +152,7 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/animations/
+    - assets/animations/onboarding/
     - assets/images/pets/
     - assets/images/events/
     - assets/icons/achievements/
