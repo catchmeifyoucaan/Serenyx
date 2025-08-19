@@ -47,49 +47,19 @@ class PetService {
       final prefs = await SharedPreferences.getInstance();
       final currentPetId = prefs.getString(_currentPetKey);
       
-      if (currentPetId != null) {
+      if (currentPetId != null && _pets.isNotEmpty) {
         _currentPet = _pets.firstWhere(
           (pet) => pet.id == currentPetId,
-          orElse: () => _pets.isNotEmpty ? _pets.first : _createDefaultPet(),
+          orElse: () => _pets.first,
         );
       } else if (_pets.isNotEmpty) {
         _currentPet = _pets.first;
         await _setCurrentPet(_currentPet!);
-      } else {
-        _currentPet = _createDefaultPet();
-        await addPet(_currentPet!);
       }
     } catch (e) {
       print('Error loading current pet: $e');
-      _currentPet = _createDefaultPet();
+      _currentPet = null;
     }
-  }
-
-  /// Create a default pet for new users
-  Pet _createDefaultPet() {
-    final now = DateTime.now();
-    return Pet(
-      id: 'default-pet-${now.millisecondsSinceEpoch}',
-      name: 'Buddy',
-      type: 'Dog',
-      avatar: 'default',
-      birthDate: now.subtract(const Duration(days: 365 * 2)), // 2 years old
-      breed: 'Mixed Breed',
-      weight: 15.0,
-      ownerId: 'default-user',
-      createdAt: now,
-      updatedAt: now,
-      preferences: {
-        'favorite_toy': 'Ball',
-        'favorite_treat': 'Peanut Butter',
-        'energy_level': 'medium',
-      },
-      healthNotes: [
-        'Loves belly rubs',
-        'Enjoys long walks',
-        'Very friendly with other pets',
-      ],
-    );
   }
 
   /// Add a new pet

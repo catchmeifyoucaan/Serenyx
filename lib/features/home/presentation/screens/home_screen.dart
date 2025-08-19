@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/auth_models.dart';
 import '../../../../shared/models/pet.dart';
+import '../../../../shared/services/pet_service.dart';
 import '../../../../shared/widgets/interactive_pet_image.dart';
 import '../../../ai_ml/presentation/widgets/emotion_recognition_widget.dart';
 import '../../../ai_ml/presentation/widgets/behavioral_prediction_widget.dart';
@@ -36,7 +38,6 @@ class _HomeScreenState extends State<HomeScreen>
   late TabController _tabController;
   late PageController _petCarouselController;
   int _currentPetIndex = 0;
-  final List<Pet> _pets = [];
   final ImagePicker _picker = ImagePicker();
 
   @override
@@ -44,49 +45,16 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
     _petCarouselController = PageController();
-    _loadPets();
   }
 
-  void _loadPets() {
-    // Load user's pets - in real app, this would come from a service
-    _pets.addAll([
-      Pet(
-        id: '1',
-        name: 'Luna',
-        type: 'Dog',
-        breed: 'Golden Retriever',
-        age: 24,
-        photos: [
-          'assets/images/pets/luna_1.jpg',
-          'assets/images/pets/luna_2.jpg',
-        ],
-        ownerId: widget.user.id,
-      ),
-      Pet(
-        id: '2',
-        name: 'Whiskers',
-        type: 'Cat',
-        breed: 'Persian',
-        age: 36,
-        photos: [
-          'assets/images/pets/whiskers_1.jpg',
-        ],
-        ownerId: widget.user.id,
-      ),
-      Pet(
-        id: '3',
-        name: 'Buddy',
-        type: 'Dog',
-        breed: 'Labrador',
-        age: 12,
-        photos: [
-          'assets/images/pets/buddy_1.jpg',
-          'assets/images/pets/buddy_2.jpg',
-          'assets/images/pets/buddy_3.jpg',
-        ],
-        ownerId: widget.user.id,
-      ),
-    ]);
+  List<Pet> get _pets {
+    final petService = Provider.of<PetService>(context, listen: false);
+    return petService.pets;
+  }
+
+  Pet? get currentPet {
+    final petService = Provider.of<PetService>(context, listen: false);
+    return petService.currentPet;
   }
 
   @override
@@ -100,16 +68,19 @@ class _HomeScreenState extends State<HomeScreen>
     showDialog(
       context: context,
       builder: (context) => _AddPetDialog(
-        onPetAdded: (pet) {
-          setState(() {
-            _pets.add(pet);
-            _currentPetIndex = _pets.length - 1;
-          });
-          _petCarouselController.animateToPage(
-            _currentPetIndex,
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeInOut,
-          );
+        onPetAdded: (pet) async {
+          final petService = Provider.of<PetService>(context, listen: false);
+          final success = await petService.addPet(pet);
+          if (success && mounted) {
+            setState(() {
+              _currentPetIndex = _pets.length;
+            });
+            _petCarouselController.animateToPage(
+              _currentPetIndex,
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeInOut,
+            );
+          }
         },
       ),
     );
@@ -120,13 +91,14 @@ class _HomeScreenState extends State<HomeScreen>
 
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      setState(() {
-        _pets[_currentPetIndex].photos.add(image.path);
-      });
+      final petService = Provider.of<PetService>(context, listen: false);
+      final currentPet = _pets[_currentPetIndex];
+      final updatedPet = currentPet.copyWith(
+        photos: [...currentPet.photos, image.path],
+      );
+      await petService.updatePet(updatedPet);
     }
   }
-
-  Pet? get currentPet => _pets.isNotEmpty ? _pets[_currentPetIndex] : null;
 
   @override
   Widget build(BuildContext context) {
@@ -894,7 +866,7 @@ class _HomeScreenState extends State<HomeScreen>
                     color: Colors.orange,
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, '/community');
+                      Navigator.pushNamed(context, '/best-pet');
                     },
                   ),
                   _buildQuickAccessItem(
