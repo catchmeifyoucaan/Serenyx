@@ -128,6 +128,31 @@ class _HomeScreenState extends State<HomeScreen>
 
   Pet? get currentPet => _pets.isNotEmpty ? _pets[_currentPetIndex] : null;
 
+  String _greetingForTime() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) return 'Good morning';
+    if (hour >= 12 && hour < 17) return 'Good afternoon';
+    if (hour >= 17 && hour < 22) return 'Good evening';
+    return 'Good night';
+  }
+
+  String _buildGreetingText() {
+    final baseGreeting = _greetingForTime();
+    final profile = widget.user.profile;
+    final caregiver = (profile.caregiverTitle ?? 'Parent');
+    final useNickname = profile.useNicknameInGreetings ?? true;
+    final nickname = profile.preferredPetNickname;
+    final petName = currentPet?.name;
+
+    if (useNickname && (nickname != null && nickname.isNotEmpty)) {
+      return '$baseGreeting, ${nickname}\'s ${caregiver}!';
+    }
+    if (useNickname && petName != null && petName.isNotEmpty) {
+      return '$baseGreeting, ${petName}\'s ${caregiver}!';
+    }
+    return '$baseGreeting, ${profile.firstName ?? 'Pet Parent'}!';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -222,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Welcome back, ${widget.user.profile.firstName ?? 'Pet Parent'}!',
+                      _buildGreetingText(),
                       style: AppTheme.textStyles.titleLarge?.copyWith(
                         color: AppTheme.colors.textPrimary,
                         fontWeight: FontWeight.bold,
@@ -886,6 +911,15 @@ class _HomeScreenState extends State<HomeScreen>
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.pushNamed(context, '/analytics');
+                    },
+                  ),
+                  _buildQuickAccessItem(
+                    icon: Icons.music_note,
+                    label: 'Soundscape',
+                    color: Colors.deepPurple,
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/soundscape');
                     },
                   ),
                   _buildQuickAccessItem(

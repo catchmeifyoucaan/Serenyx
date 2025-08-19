@@ -8,6 +8,7 @@ enum OnboardingStepType {
   routineInput,
   rating,
   final,
+  toggle,
 }
 
 class OnboardingStep {
@@ -22,6 +23,7 @@ class OnboardingStep {
   final String? inputHint;
   final int? maxSelections;
   final List<String>? ratingLabels;
+  final String? lottieAsset; // optional Lottie animation path
 
   const OnboardingStep({
     required this.id,
@@ -35,6 +37,7 @@ class OnboardingStep {
     this.inputHint,
     this.maxSelections,
     this.ratingLabels,
+    this.lottieAsset,
   });
 }
 
@@ -66,6 +69,17 @@ class OnboardingData {
   List<String>? get healthConcerns => _data['healthConcerns'];
   String? get lifestylePreference => _data['lifestylePreference'];
   int? get commitmentLevel => _data['commitmentLevel'];
+
+  // Caregiver preferences and greeting nicknames
+  String? get caregiverTitle => _data['caregiverTitle']; // Mom, Dad, Guardian
+  bool get useNicknameInGreetings => _data['useNicknameInGreetings'] ?? true;
+  bool get useNicknameInCommunity => _data['useNicknameInCommunity'] ?? true;
+  String? get preferredPetNickname => _data['preferredPetNickname'];
+
+  // Soundscape
+  bool get enableSoundscape => _data['enableSoundscape'] ?? true;
+  String? get soundscapeStyle => _data['soundscapeStyle']; // e.g., calm, playful
+  List<String>? get favoritePetSounds => _data['favoritePetSounds'];
 
   void updateData(String key, dynamic value) {
     _data[key] = value;
