@@ -14,10 +14,14 @@ import '../../../health_wellness/presentation/widgets/mental_health_monitor.dart
 import '../../../health_wellness/presentation/widgets/preventive_care_system.dart';
 import '../../../notifications/presentation/screens/notifications_screen.dart';
 import '../../../premium/presentation/widgets/premium_analytics_dashboard.dart';
-import '../../../community/presentation/screens/marketplace_screen.dart';
+import '../../../community/presentation/screens/best_pet_tab.dart';
 import '../../../digital_scrapbook/presentation/screens/digital_scrapbook_screen.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
+import '../../../../shared/services/pet_service.dart';
+import '../../../pet_health/presentation/widgets/add_pet_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   final User user;
@@ -44,50 +48,15 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
     _petCarouselController = PageController();
-    _loadPets();
+    // Initialize PetService
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await Provider.of<PetService>(context, listen: false).initialize();
+      } catch (_) {}
+    });
   }
 
-  void _loadPets() {
-    // Load user's pets - in real app, this would come from a service
-    _pets.addAll([
-      Pet(
-        id: '1',
-        name: 'Luna',
-        type: 'Dog',
-        breed: 'Golden Retriever',
-        age: 24,
-        photos: [
-          'assets/images/pets/luna_1.jpg',
-          'assets/images/pets/luna_2.jpg',
-        ],
-        ownerId: widget.user.id,
-      ),
-      Pet(
-        id: '2',
-        name: 'Whiskers',
-        type: 'Cat',
-        breed: 'Persian',
-        age: 36,
-        photos: [
-          'assets/images/pets/whiskers_1.jpg',
-        ],
-        ownerId: widget.user.id,
-      ),
-      Pet(
-        id: '3',
-        name: 'Buddy',
-        type: 'Dog',
-        breed: 'Labrador',
-        age: 12,
-        photos: [
-          'assets/images/pets/buddy_1.jpg',
-          'assets/images/pets/buddy_2.jpg',
-          'assets/images/pets/buddy_3.jpg',
-        ],
-        ownerId: widget.user.id,
-      ),
-    ]);
-  }
+  void _loadPets() {}
 
   @override
   void dispose() {
@@ -96,23 +65,23 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  void _addNewPet() {
-    showDialog(
+  void _addNewPet() async {
+    final Pet? created = await showDialog<Pet>(
       context: context,
-      builder: (context) => _AddPetDialog(
-        onPetAdded: (pet) {
-          setState(() {
-            _pets.add(pet);
-            _currentPetIndex = _pets.length - 1;
-          });
-          _petCarouselController.animateToPage(
-            _currentPetIndex,
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeInOut,
-          );
-        },
-      ),
+      builder: (context) => const AddPetDialog(),
     );
+    if (created != null) {
+      final userId = fb.FirebaseAuth.instance.currentUser?.uid ?? widget.user.id;
+      final now = DateTime.now();
+      final petToSave = created.copyWith(
+        id: created.id.isEmpty ? 'pet-${now.millisecondsSinceEpoch}' : created.id,
+        ownerId: userId,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await Provider.of<PetService>(context, listen: false).addPet(petToSave);
+      if (mounted) setState(() {});
+    }
   }
 
   void _addPetPhoto() async {
@@ -126,7 +95,10 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  Pet? get currentPet => _pets.isNotEmpty ? _pets[_currentPetIndex] : null;
+  Pet? get currentPet {
+    final pets = Provider.of<PetService>(context).pets;
+    return pets.isNotEmpty ? pets[_currentPetIndex.clamp(0, pets.length - 1)] : null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -243,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(height: 24),
           
           // Pet Carousel
-          if (_pets.isNotEmpty) ...[
+          if (Provider.of<PetService>(context).pets.isNotEmpty) ...[
             Text(
               'Your Pets',
               style: AppTheme.textStyles.titleMedium?.copyWith(
@@ -263,22 +235,20 @@ class _HomeScreenState extends State<HomeScreen>
                     _currentPetIndex = index;
                   });
                 },
-                itemCount: _pets.length,
+                itemCount: Provider.of<PetService>(context).pets.length,
                 itemBuilder: (context, index) {
-                  final pet = _pets[index];
+                  final pet = Provider.of<PetService>(context).pets[index];
                   return Column(
                     children: [
                       // Interactive Pet Image
                       InteractivePetImage(
-                        imagePath: pet.photos.isNotEmpty 
-                            ? pet.photos.first 
-                            : 'assets/images/pets/placeholder.jpg',
+                        imagePath: 'assets/images/pets/placeholder.jpg',
                         petName: pet.name,
                         size: 120,
                         onTap: () {
                           // Show pet details
                         },
-                        overlayText: '${index + 1}/${_pets.length}',
+                        overlayText: '${index + 1}/${Provider.of<PetService>(context).pets.length}',
                       ),
                       
                       const SizedBox(height: 12),
@@ -293,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       
                       Text(
-                        '${pet.breed} • ${pet.age} months old',
+                        '${pet.breed} • ${pet.age} years old',
                         style: AppTheme.textStyles.bodyMedium?.copyWith(
                           color: AppTheme.colors.textSecondary,
                         ),
@@ -307,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen>
             // Pet Navigation Dots
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(_pets.length, (index) {
+              children: List.generate(Provider.of<PetService>(context).pets.length, (index) {
                 return Container(
                   width: 8,
                   height: 8,
@@ -889,12 +859,12 @@ class _HomeScreenState extends State<HomeScreen>
                     },
                   ),
                   _buildQuickAccessItem(
-                    icon: Icons.people,
-                    label: 'Community',
+                    icon: Icons.emoji_events,
+                    label: 'Best Pet',
                     color: Colors.orange,
                     onTap: () {
                       Navigator.pop(context);
-                      Navigator.pushNamed(context, '/community');
+                      Navigator.pushNamed(context, '/best-pet');
                     },
                   ),
                   _buildQuickAccessItem(
@@ -1049,7 +1019,7 @@ class _HomeScreenState extends State<HomeScreen>
           Tab(icon: Icon(Icons.health_and_safety), text: 'Health'),
           Tab(icon: Icon(Icons.psychology), text: 'AI Insights'),
           Tab(icon: Icon(Icons.notifications), text: 'Reminders'),
-          Tab(icon: Icon(Icons.people), text: 'Community'),
+          Tab(icon: Icon(Icons.emoji_events), text: 'Best Pet'),
           Tab(icon: Icon(Icons.photo_library), text: 'Scrapbook'),
         ],
       ),
@@ -1084,8 +1054,8 @@ class _HomeScreenState extends State<HomeScreen>
           label: 'Reminders',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.people),
-          label: 'Community',
+          icon: Icon(Icons.emoji_events),
+          label: 'Best Pet',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.photo_library),
@@ -1460,7 +1430,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildCommunityTab() {
-    return const MarketplaceScreen();
+    return const BestPetTab();
   }
 
   Widget _buildScrapbookTab() {
