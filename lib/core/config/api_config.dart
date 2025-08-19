@@ -2,8 +2,8 @@ class ApiConfig {
   // Development
   static const String devBaseUrl = 'http://localhost:3000/api';
   
-  // Production
-  static const String prodBaseUrl = 'https://api.serenyx.com/api';
+  // Production - Render deployment
+  static const String prodBaseUrl = 'https://serenyx-api.onrender.com/api';
   
   // Staging
   static const String stagingBaseUrl = 'https://staging-api.serenyx.com/api';
@@ -42,4 +42,15 @@ class ApiConfig {
   // Cache settings
   static const int cacheExpirationMinutes = 5;
   static const int maxCacheSize = 50 * 1024 * 1024; // 50MB
+  
+  // Voice guidance settings
+  static const String defaultVoiceId = 'pNInz6obpgDQGcFmaJgB'; // Warm, friendly voice
+  static const double defaultSpeechRate = 1.0;
+  static const double defaultPitch = 0.0;
+  
+  // Feature flags
+  static const bool enableVoiceGuidance = true;
+  static const bool enableGamification = true;
+  static const bool enableSocialFeatures = true;
+  static const bool enableAnalytics = true;
 }
