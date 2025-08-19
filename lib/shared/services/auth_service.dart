@@ -5,6 +5,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auth_models.dart';
+import 'api_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -19,6 +20,9 @@ class AuthService {
   
   // Current user getter
   User? get currentUser => _auth.currentUser;
+  
+  // API service for backend communication
+  final ApiService _apiService = ApiService();
   
   // Check if user is authenticated
   bool get isAuthenticated => _auth.currentUser != null;
@@ -548,6 +552,25 @@ class AuthService {
         return 'Network error. Please check your connection';
       default:
         return 'Authentication failed. Please try again';
+    }
+  }
+
+  /// Get current user from backend API
+  Future<User?> getCurrentUser() async {
+    try {
+      if (_auth.currentUser == null) {
+        return null;
+      }
+      
+      // Get custom token for backend authentication
+      final customToken = await _auth.currentUser!.getIdToken();
+      await _apiService.setAuthToken(customToken);
+      
+      // Get user data from backend
+      return await _apiService.getCurrentUser();
+    } catch (e) {
+      print('Error getting current user: $e');
+      return null;
     }
   }
 

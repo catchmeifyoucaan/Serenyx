@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/models/pet.dart';
 import '../../../../shared/models/social_models.dart';
+import '../../../../shared/services/api_service.dart';
 import '../../../../shared/widgets/interactive_pet_image.dart';
 
 class BestPetScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class _BestPetScreenState extends State<BestPetScreen>
   List<BestPetEntry> _bestPets = [];
   bool _isLoading = true;
   String _selectedCategory = 'all';
+  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
@@ -38,10 +40,12 @@ class _BestPetScreenState extends State<BestPetScreen>
     });
 
     try {
-      // Mock data - will be replaced with API calls
-      await _loadMockBestPets();
+      final entries = await _apiService.getBestPetEntries(
+        category: _selectedCategory == 'all' ? null : _selectedCategory,
+      );
       
       setState(() {
+        _bestPets = entries;
         _isLoading = false;
       });
     } catch (e) {
@@ -49,97 +53,50 @@ class _BestPetScreenState extends State<BestPetScreen>
       setState(() {
         _isLoading = false;
       });
+      
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load best pets: ${e.toString()}'),
+            backgroundColor: AppTheme.colors.error,
+          ),
+        );
+      }
     }
   }
 
-  Future<void> _loadMockBestPets() async {
-    // Mock best pets data
-    _bestPets = [
-      BestPetEntry(
-        id: '1',
-        pet: Pet(
-          id: '1',
-          name: 'Luna',
-          type: 'Dog',
-          breed: 'Golden Retriever',
-          age: 24,
-          photos: ['assets/images/pets/luna_1.jpg'],
-          ownerId: 'user1',
+  Future<void> _voteForPet(String petId) async {
+    try {
+      final entry = _bestPets.firstWhere((entry) => entry.id == petId);
+      
+      final voteData = {
+        'petId': entry.pet.id,
+        'category': entry.category,
+      };
+      
+      final result = await _apiService.voteForPet(voteData);
+      
+      // Update local state
+      setState(() {
+        entry.votes = result['newVoteCount'];
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Vote recorded! Thank you for participating.'),
+          backgroundColor: AppTheme.colors.success,
         ),
-        ownerName: 'Sarah Johnson',
-        ownerAvatar: 'assets/images/avatars/sarah.jpg',
-        category: 'Most Photogenic',
-        votes: 1247,
-        description: 'Luna loves posing for the camera and has the most expressive eyes!',
-        achievements: [
-          'Photo Master',
-          'Community Star',
-          'Wellness Champion',
-        ],
-        tags: ['photogenic', 'friendly', 'well-trained'],
-        createdAt: DateTime.now().subtract(const Duration(days: 30)),
-      ),
-      BestPetEntry(
-        id: '2',
-        pet: Pet(
-          id: '2',
-          name: 'Whiskers',
-          type: 'Cat',
-          breed: 'Persian',
-          age: 36,
-          photos: ['assets/images/pets/whiskers_1.jpg'],
-          ownerId: 'user2',
+      );
+    } catch (e) {
+      print('Error voting for pet: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to record vote: ${e.toString()}'),
+          backgroundColor: AppTheme.colors.error,
         ),
-        ownerName: 'Mike Chen',
-        ownerAvatar: 'assets/images/avatars/mike.jpg',
-        category: 'Most Adorable',
-        votes: 892,
-        description: 'Whiskers has the fluffiest fur and the sweetest personality!',
-        achievements: [
-          'Adorable Award',
-          'Social Butterfly',
-        ],
-        tags: ['adorable', 'fluffy', 'gentle'],
-        createdAt: DateTime.now().subtract(const Duration(days: 25)),
-      ),
-      BestPetEntry(
-        id: '3',
-        pet: Pet(
-          id: '3',
-          name: 'Buddy',
-          type: 'Dog',
-          breed: 'Labrador',
-          age: 12,
-          photos: ['assets/images/pets/buddy_1.jpg'],
-          ownerId: 'user3',
-        ),
-        ownerName: 'Emma Davis',
-        ownerAvatar: 'assets/images/avatars/emma.jpg',
-        category: 'Most Athletic',
-        votes: 756,
-        description: 'Buddy is a natural athlete who loves running and playing fetch!',
-        achievements: [
-          'Athletic Champion',
-          'Training Master',
-        ],
-        tags: ['athletic', 'energetic', 'trained'],
-        createdAt: DateTime.now().subtract(const Duration(days: 20)),
-      ),
-    ];
-  }
-
-  void _voteForPet(String petId) {
-    setState(() {
-      final pet = _bestPets.firstWhere((entry) => entry.id == petId);
-      pet.votes++;
-    });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Vote recorded! Thank you for participating.'),
-        backgroundColor: AppTheme.colors.success,
-      ),
-    );
+      );
+    }
   }
 
   void _showPetDetails(BestPetEntry entry) {
@@ -576,13 +533,13 @@ class _BestPetScreenState extends State<BestPetScreen>
                     // Vote Button
                     Column(
                       children: [
-                        IconButton(
-                          onPressed: () => _voteForPet(entry.id),
-                          icon: Icon(
-                            Icons.thumb_up,
-                            color: AppTheme.colors.primary,
-                          ),
-                        ),
+                                                 IconButton(
+                           onPressed: () async => await _voteForPet(entry.id),
+                           icon: Icon(
+                             Icons.thumb_up,
+                             color: AppTheme.colors.primary,
+                           ),
+                         ),
                         Text(
                           '${entry.votes}',
                           style: AppTheme.textStyles.bodyMedium?.copyWith(

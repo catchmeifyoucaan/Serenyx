@@ -45,6 +45,12 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
     _petCarouselController = PageController();
+    _initializePetService();
+  }
+
+  void _initializePetService() async {
+    final petService = Provider.of<PetService>(context, listen: false);
+    await petService.initialize();
   }
 
   List<Pet> get _pets {
@@ -55,6 +61,11 @@ class _HomeScreenState extends State<HomeScreen>
   Pet? get currentPet {
     final petService = Provider.of<PetService>(context, listen: false);
     return petService.currentPet;
+  }
+
+  bool get _isLoading {
+    final petService = Provider.of<PetService>(context, listen: false);
+    return petService.isLoading;
   }
 
   @override
@@ -215,7 +226,17 @@ class _HomeScreenState extends State<HomeScreen>
           const SizedBox(height: 24),
           
           // Pet Carousel
-          if (_pets.isNotEmpty) ...[
+          if (_isLoading) ...[
+            const SizedBox(height: 20),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 20),
+            Text(
+              'Loading your pets...',
+              style: AppTheme.textStyles.bodyMedium?.copyWith(
+                color: AppTheme.colors.textSecondary,
+              ),
+            ),
+          ] else if (_pets.isNotEmpty) ...[
             Text(
               'Your Pets',
               style: AppTheme.textStyles.titleMedium?.copyWith(

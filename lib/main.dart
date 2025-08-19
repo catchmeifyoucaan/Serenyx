@@ -61,67 +61,6 @@ void main() async {
 class SerenyxApp extends StatelessWidget {
   const SerenyxApp({super.key});
 
-  /// Helper method to create a default user for testing
-  User _getDefaultUser() {
-    return User(
-      id: 'demo-user',
-      email: 'demo@serenyx.com',
-      createdAt: DateTime.now(),
-      lastSignInAt: DateTime.now(),
-      emailVerified: true,
-      pets: [],
-      profile: UserProfile(
-        firstName: 'Demo',
-        lastName: 'User',
-        interests: ['Pet Care', 'Mindfulness'],
-      ),
-      preferences: UserPreferences(
-        notifications: NotificationSettings(
-          pushEnabled: true,
-          emailEnabled: false,
-          smsEnabled: false,
-          enabledTypes: ['health_reminders', 'vet_appointments'],
-          quietHours: TimeRange(
-            start: const TimeOfDay(hour: 22, minute: 0),
-            end: const TimeOfDay(hour: 7, minute: 0),
-          ),
-        ),
-        privacy: PrivacySettings(
-          profilePublic: false,
-          petsPublic: false,
-          healthDataShared: false,
-          trustedContacts: [],
-          analyticsEnabled: true,
-        ),
-        aiPreferences: AIPreferences(
-          preferredModel: 'gpt-5',
-          enabledFeatures: ['emotion_recognition', 'behavioral_prediction'],
-          autoAnalysis: true,
-          personalizedRecommendations: true,
-          modelSettings: {},
-        ),
-        theme: ThemeSettings(
-          themeMode: 'system',
-          colorScheme: 'default',
-          useSystemTheme: true,
-        ),
-        language: LanguageSettings(
-          language: 'en',
-          region: 'US',
-          autoDetect: true,
-        ),
-      ),
-      subscription: SubscriptionInfo(
-        plan: 'free',
-        startDate: DateTime.now(),
-        isActive: true,
-        features: ['basic_tracking', 'ai_insights'],
-        monthlyPrice: 0.0,
-        billingCycle: 'monthly',
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -145,7 +84,6 @@ class SerenyxApp extends StatelessWidget {
         routes: {
           '/login': (context) => const LoginScreen(),
           '/onboarding': (context) => const OnboardingScreen(),
-          '/home': (context) => HomeScreen(user: _getDefaultUser()),
           '/tickle-session': (context) => const TickleSessionScreen(
             petId: 'demo-pet',
             petName: 'Buddy',
@@ -156,10 +94,8 @@ class SerenyxApp extends StatelessWidget {
             interactionCount: 10,
           ),
           '/pet-management': (context) => const PetManagementScreen(),
-          '/enhanced-health': (context) => EnhancedPetHealthScreen(pet: Pet.empty()),
           '/social-feed': (context) => const SocialFeedScreen(),
           '/analytics': (context) => const AnalyticsDashboardScreen(),
-          '/scrapbook': (context) => DigitalScrapbookScreen(pet: Pet.empty()),
           '/notifications': (context) => const NotificationsScreen(),
           '/health-wellness': (context) => const HealthWellnessScreen(),
           '/premium-features': (context) => const PremiumFeaturesScreen(),
@@ -195,8 +131,22 @@ class AuthWrapper extends StatelessWidget {
             }
             
             if (snapshot.hasData && snapshot.data != null) {
-              // User is authenticated
-              return const HomeScreen();
+              // User is authenticated - get user data from AuthService
+              final authService = Provider.of<AuthService>(context, listen: false);
+              return FutureBuilder<User?>(
+                future: authService.getCurrentUser(),
+                builder: (context, userSnapshot) {
+                  if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    return const SplashScreen();
+                  }
+                  
+                  if (userSnapshot.hasData && userSnapshot.data != null) {
+                    return HomeScreen(user: userSnapshot.data!);
+                  } else {
+                    return const LoginScreen();
+                  }
+                },
+              );
             } else {
               // User is not authenticated
               return const LoginScreen();

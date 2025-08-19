@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import '../models/pet.dart';
+import 'api_service.dart';
 
-class PetService {
+class PetService extends ChangeNotifier {
   static const String _petsKey = 'user_pets';
   static const String _currentPetKey = 'current_pet';
   
@@ -11,23 +13,48 @@ class PetService {
   factory PetService() => _instance;
   PetService._internal();
 
+  // API service
+  final ApiService _apiService = ApiService();
+  
   // In-memory cache
   List<Pet> _pets = [];
   Pet? _currentPet;
+  bool _isLoading = false;
 
   // Getters
   List<Pet> get pets => List.unmodifiable(_pets);
   Pet? get currentPet => _currentPet;
   bool get hasPets => _pets.isNotEmpty;
+  bool get isLoading => _isLoading;
 
-  /// Initialize the service and load pets from storage
+  /// Initialize the service and load pets from API
   Future<void> initialize() async {
     await _loadPets();
     await _loadCurrentPet();
   }
 
-  /// Load pets from local storage
+  /// Load pets from API
   Future<void> _loadPets() async {
+    try {
+      _isLoading = true;
+      _notifyListeners();
+      
+      final pets = await _apiService.getPets();
+      _pets = pets;
+      
+      _isLoading = false;
+      _notifyListeners();
+    } catch (e) {
+      print('Error loading pets: $e');
+      // Fallback to local storage if API is not available
+      await _loadPetsFromLocalStorage();
+      _isLoading = false;
+      _notifyListeners();
+    }
+  }
+
+  /// Load pets from local storage as fallback
+  Future<void> _loadPetsFromLocalStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final petsJson = prefs.getStringList(_petsKey) ?? [];
@@ -36,7 +63,7 @@ class PetService {
           .map((json) => Pet.fromJson(jsonDecode(json)))
           .toList();
     } catch (e) {
-      print('Error loading pets: $e');
+      print('Error loading pets from local storage: $e');
       _pets = [];
     }
   }
@@ -65,16 +92,26 @@ class PetService {
   /// Add a new pet
   Future<bool> addPet(Pet pet) async {
     try {
-      _pets.add(pet);
-      await _savePets();
+      final petData = pet.toJson();
+      final newPet = await _apiService.createPet(petData);
+      
+      _pets.add(newPet);
       
       if (_currentPet == null) {
-        await _setCurrentPet(pet);
+        await _setCurrentPet(newPet);
       }
       
+      // Save to local storage as backup
+      await _savePetsToLocalStorage();
+      
+      _notifyListeners();
       return true;
     } catch (e) {
       print('Error adding pet: $e');
+      // Fallback to local storage only
+      _pets.add(pet);
+      await _savePetsToLocalStorage();
+      _notifyListeners();
       return false;
     }
   }
@@ -82,16 +119,19 @@ class PetService {
   /// Update an existing pet
   Future<bool> updatePet(Pet updatedPet) async {
     try {
+      final petData = updatedPet.toJson();
+      final updatedPetFromApi = await _apiService.updatePet(updatedPet.id, petData);
+      
       final index = _pets.indexWhere((pet) => pet.id == updatedPet.id);
       if (index != -1) {
-        _pets[index] = updatedPet;
+        _pets[index] = updatedPetFromApi;
         
         if (_currentPet?.id == updatedPet.id) {
-          _currentPet = updatedPet;
-          await _setCurrentPet(updatedPet);
+          _currentPet = updatedPetFromApi;
+          await _setCurrentPet(updatedPetFromApi);
         }
         
-        await _savePets();
+        _notifyListeners();
         return true;
       }
       return false;
@@ -104,6 +144,8 @@ class PetService {
   /// Remove a pet
   Future<bool> removePet(String petId) async {
     try {
+      await _apiService.deletePet(petId);
+      
       _pets.removeWhere((pet) => pet.id == petId);
       
       if (_currentPet?.id == petId) {
@@ -113,7 +155,7 @@ class PetService {
         }
       }
       
-      await _savePets();
+      _notifyListeners();
       return true;
     } catch (e) {
       print('Error removing pet: $e');
@@ -216,8 +258,13 @@ class PetService {
     }
   }
 
-  /// Save pets to local storage
-  Future<void> _savePets() async {
+  /// Notify listeners of state changes
+  void _notifyListeners() {
+    notifyListeners();
+  }
+
+  /// Save pets to local storage as backup
+  Future<void> _savePetsToLocalStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final petsJson = _pets
@@ -226,7 +273,7 @@ class PetService {
       
       await prefs.setStringList(_petsKey, petsJson);
     } catch (e) {
-      print('Error saving pets: $e');
+      print('Error saving pets to local storage: $e');
     }
   }
 
