@@ -19,6 +19,7 @@ import 'features/health_wellness/presentation/screens/health_wellness_screen.dar
 import 'features/premium/presentation/screens/premium_features_screen.dart';
 import 'features/community/presentation/screens/community_screen.dart';
 import 'features/community/presentation/screens/marketplace_screen.dart';
+import 'features/community/presentation/screens/best_pet_screen.dart';
 import 'features/ai_ml/presentation/screens/ai_insights_screen.dart';
 import 'features/veterinary_ai/presentation/screens/veterinary_ai_screen.dart';
 import 'features/behavioral_analysis/presentation/screens/behavioral_analysis_screen.dart';
@@ -164,6 +165,7 @@ class SerenyxApp extends StatelessWidget {
           '/premium-features': (context) => const PremiumFeaturesScreen(),
           '/community': (context) => const CommunityScreen(),
           '/marketplace': (context) => const MarketplaceScreen(),
+          '/best-pet': (context) => const BestPetScreen(),
           '/ai-insights': (context) => const AIInsightsScreen(),
           '/veterinary-ai': (context) => const VeterinaryAIScreen(),
           '/behavioral-analysis': (context) => const BehavioralAnalysisScreen(),
